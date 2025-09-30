@@ -2,7 +2,7 @@ const { app, appInitialized } = require("./app");
 const config = require("./config/config");
 const { testConnections } = require("./config/database");
 
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 4000;
 
 async function createServer() {
   try {
