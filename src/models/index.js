@@ -34,22 +34,22 @@ const initializeModels = async () => {
   try {
     console.log("🔄 Creating/updating tables...");
 
-    // Use alter: true to modify existing tables, force: false to preserve data
+    // Use alter: false to prevent schema conflicts in production
     console.log("📋 Syncing parent tables...");
-    await Admin.sync({ force: false, alter: true });
-    await User.sync({ force: false, alter: true });
-    await Project.sync({ force: false, alter: true });
+    await Admin.sync({ force: false, alter: false });
+    await User.sync({ force: false, alter: false });
+    await Project.sync({ force: false, alter: false });
 
     console.log("📋 Syncing child tables...");
-    await Task.sync({ force: false, alter: true });
-    await Material.sync({ force: false, alter: true });
-    await Equipment.sync({ force: false, alter: true });
-    await Labor.sync({ force: false, alter: true });
-    await Budget.sync({ force: false, alter: true });
-    await Document.sync({ force: false, alter: true });
-    await ProgressUpdate.sync({ force: false, alter: true });
-    await Issue.sync({ force: false, alter: true });
-    await Notification.sync({ force: false, alter: true });
+    await Task.sync({ force: false, alter: false });
+    await Material.sync({ force: false, alter: false });
+    await Equipment.sync({ force: false, alter: false });
+    await Labor.sync({ force: false, alter: false });
+    await Budget.sync({ force: false, alter: false });
+    await Document.sync({ force: false, alter: false });
+    await ProgressUpdate.sync({ force: false, alter: false });
+    await Issue.sync({ force: false, alter: false });
+    await Notification.sync({ force: false, alter: false });
 
     console.log("✅ All models synced successfully");
   } catch (error) {
