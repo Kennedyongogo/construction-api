@@ -13,9 +13,13 @@ const storage = multer.diskStorage({
       uploadPath = path.join(__dirname, "..", "..", "uploads", "documents");
     }
 
+    console.log("📁 Upload destination:", uploadPath);
+    console.log("📁 Directory exists:", fs.existsSync(uploadPath));
+
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
+      console.log("📁 Created directory:", uploadPath);
     }
 
     cb(null, uploadPath);
@@ -25,6 +29,7 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const extension = path.extname(file.originalname);
     const filename = `${file.fieldname}-${uniqueSuffix}${extension}`;
+    console.log("📄 Generated filename:", filename);
     cb(null, filename);
   },
 });
