@@ -1,0 +1,99 @@
+const express = require("express");
+const path = require("path");
+const cors = require("cors");
+const fs = require("fs");
+
+const { initializeModels, setupAssociations } = require("./models");
+const { errorHandler } = require("./middleware/errorHandler");
+
+// Import all routes
+const adminRoutes = require("./routes/adminRoutes");
+const userRoutes = require("./routes/userRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+const taskRoutes = require("./routes/taskRoutes");
+const materialRoutes = require("./routes/materialRoutes");
+const equipmentRoutes = require("./routes/equipmentRoutes");
+const laborRoutes = require("./routes/laborRoutes");
+const budgetRoutes = require("./routes/budgetRoutes");
+const documentRoutes = require("./routes/documentRoutes");
+const progressUpdateRoutes = require("./routes/progressUpdateRoutes");
+const issueRoutes = require("./routes/issueRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+
+const app = express();
+
+// Middleware
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(cors());
+
+// Static file serving for project documents and images
+app.use(
+  "/uploads/projects",
+  express.static(path.join(__dirname, "..", "uploads", "projects"))
+);
+app.use(
+  "/uploads/documents",
+  express.static(path.join(__dirname, "..", "uploads", "documents"))
+);
+
+// API routes
+app.use("/api/admins", adminRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/materials", materialRoutes);
+app.use("/api/equipment", equipmentRoutes);
+app.use("/api/labor", laborRoutes);
+app.use("/api/budgets", budgetRoutes);
+app.use("/api/documents", documentRoutes);
+app.use("/api/progress-updates", progressUpdateRoutes);
+app.use("/api/issues", issueRoutes);
+app.use("/api/notifications", notificationRoutes);
+
+// Error handling middleware
+app.use(errorHandler);
+
+// Create upload directories if they don't exist
+const createUploadDirectories = () => {
+  const uploadDirs = [
+    path.join(__dirname, "..", "uploads"),
+    path.join(__dirname, "..", "uploads", "projects"),
+    path.join(__dirname, "..", "uploads", "documents"),
+  ];
+
+  uploadDirs.forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`📁 Created upload directory: ${dir}`);
+    }
+  });
+};
+
+// Initialize models and associations
+const initializeApp = async () => {
+  try {
+    // Create upload directories
+    createUploadDirectories();
+
+    await initializeModels();
+    setupAssociations();
+    console.log("✅ Application initialized successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Error initializing application:", error);
+    console.error("❌ Full error details:", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      parent: error.parent?.message,
+      original: error.original?.message,
+    });
+    throw error;
+  }
+};
+
+// Export the initialization promise
+const appInitialized = initializeApp();
+
+module.exports = { app, appInitialized };
