@@ -286,7 +286,7 @@ const createProject = async (req, res) => {
 
     // Handle single blueprint file upload
     if (req.file && req.file.fieldname === "blueprint") {
-      finalBlueprintUrls.push(`/uploads/projects/${req.file.filename}`);
+      finalBlueprintUrls.push(`uploads/projects/${req.file.filename}`);
     }
 
     // Handle multiple blueprint files upload
@@ -295,7 +295,7 @@ const createProject = async (req, res) => {
         (file) => file.fieldname === "blueprints"
       );
       blueprintFiles.forEach((file) => {
-        finalBlueprintUrls.push(`/uploads/projects/${file.filename}`);
+        finalBlueprintUrls.push(`uploads/projects/${file.filename}`);
       });
     }
 
@@ -385,7 +385,7 @@ const updateProject = async (req, res) => {
         (file) => file.fieldname === "blueprints"
       );
       blueprintFiles.forEach((file) => {
-        finalBlueprintUrls.push(`/uploads/projects/${file.filename}`);
+        finalBlueprintUrls.push(`uploads/projects/${file.filename}`);
       });
     }
 
