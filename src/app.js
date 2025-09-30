@@ -27,6 +27,16 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors());
 
+// Debug logging middleware
+app.use((req, res, next) => {
+  console.log(`🔍 [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log(`📋 Headers:`, req.headers);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(`📦 Body:`, req.body);
+  }
+  next();
+});
+
 // Static file serving for project documents and images
 app.use(
   "/uploads/projects",
@@ -38,7 +48,9 @@ app.use(
 );
 
 // API routes
+console.log("🔗 Registering API routes...");
 app.use("/api/admins", adminRoutes);
+console.log("✅ /api/admins route registered");
 app.use("/api/users", userRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
@@ -50,6 +62,7 @@ app.use("/api/documents", documentRoutes);
 app.use("/api/progress-updates", progressUpdateRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/notifications", notificationRoutes);
+console.log("✅ All API routes registered");
 
 // Error handling middleware
 app.use(errorHandler);

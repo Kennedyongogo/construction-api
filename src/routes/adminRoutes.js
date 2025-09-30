@@ -17,7 +17,19 @@ const {
 } = require("../middleware/upload");
 
 // Public routes
-router.post("/login", loginAdmin);
+router.post(
+  "/login",
+  (req, res, next) => {
+    console.log("🚀 LOGIN ROUTE HIT:", {
+      method: req.method,
+      url: req.url,
+      body: req.body,
+      timestamp: new Date().toISOString(),
+    });
+    next();
+  },
+  loginAdmin
+);
 router.post("/", uploadProfilePicture, handleUploadError, createAdmin); // Allow admin creation without authentication
 
 // Protected routes (require authentication)

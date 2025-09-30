@@ -306,6 +306,13 @@ const deleteAdmin = async (req, res) => {
 // Admin login
 const loginAdmin = async (req, res) => {
   try {
+    console.log("🔐 LOGIN ATTEMPT:", {
+      email: req.body.email,
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
+
     const { email, password } = req.body;
 
     const admin = await Admin.findOne({ where: { email } });
