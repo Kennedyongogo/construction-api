@@ -1,6 +1,7 @@
 const { Admin, Project, Task, Document } = require("../models");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const config = require("../config/config");
 
 // Get all admins
 const getAllAdmins = async (req, res) => {
@@ -340,7 +341,7 @@ const loginAdmin = async (req, res) => {
         email: admin.email,
         role: admin.role,
       },
-      process.env.JWT_SECRET || "your-secret-key",
+      config.jwtSecret,
       { expiresIn: "24h" }
     );
 

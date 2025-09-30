@@ -1,41 +1,41 @@
 const { app, appInitialized } = require("./app");
 const config = require("./config/config");
-const { testConnection } = require("./config/database");
+const { testConnections } = require("./config/database");
 
-const PORT = config.port;
+const PORT = process.env.PORT || 3003;
 
-// Start the server
-const startServer = async () => {
+async function createServer() {
   try {
-    // Test database connection
-    await testConnection();
+    // Test database connections
+    await testConnections();
 
     // Wait for app initialization to complete
     await app.appInitialized;
 
-    // Start the server
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Campaign Management API running on port ${PORT}`);
-      console.log(`📊 Environment: ${config.nodeEnv}`);
+      console.log(`🚀 Worker ${process.pid} listening on port ${PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV}`);
       console.log(
-        `🗄️  Database: ${config.database.database}@${config.database.host}:${config.database.port}`
+        `🗄️  Database: ${config.database.direct.database}@${config.database.direct.host}:${config.database.direct.port}`
       );
       console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
     });
 
-    // Graceful shutdown
+    // Graceful shutdown for individual workers
     process.on("SIGTERM", () => {
-      console.log("🔄 SIGTERM received, shutting down gracefully...");
+      console.log(
+        `🔄 Worker ${process.pid} received SIGTERM, shutting down...`
+      );
       server.close(() => {
-        console.log("✅ Server closed");
+        console.log(`✅ Worker ${process.pid} closed`);
         process.exit(0);
       });
     });
 
     process.on("SIGINT", () => {
-      console.log("🔄 SIGINT received, shutting down gracefully...");
+      console.log(`🔄 Worker ${process.pid} received SIGINT, shutting down...`);
       server.close(() => {
-        console.log("✅ Server closed");
+        console.log(`✅ Worker ${process.pid} closed`);
         process.exit(0);
       });
     });
@@ -45,7 +45,12 @@ const startServer = async () => {
     console.error("❌ Failed to start server:", error.message);
     process.exit(1);
   }
-};
+}
 
-// Start the server
-startServer();
+// Export for cluster mode
+module.exports = { createServer };
+
+// If running directly (not in cluster), start the server
+if (require.main === module) {
+  createServer();
+}

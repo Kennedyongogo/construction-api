@@ -3,57 +3,87 @@ require("dotenv").config();
 const { Sequelize } = require("sequelize");
 const config = require("./config");
 
-// Create Sequelize instance for local development
+// Determine which connection to use based on NODE_ENV
+const isProduction = process.env.NODE_ENV === "production";
+
+// ✅ Create main Sequelize instance (PgBouncer in production, direct in other environments)
 const sequelize = new Sequelize(
-  config.database.database,
-  config.database.username,
-  config.database.password,
+  isProduction
+    ? config.database.pgbouncer.database
+    : config.database.direct.database,
+  isProduction
+    ? config.database.pgbouncer.username
+    : config.database.direct.username,
+  isProduction
+    ? config.database.pgbouncer.password
+    : config.database.direct.password,
   {
-    host: config.database.host,
-    port: config.database.port,
+    host: isProduction
+      ? config.database.pgbouncer.host
+      : config.database.direct.host,
+    port: isProduction
+      ? config.database.pgbouncer.port
+      : config.database.direct.port,
     dialect: "postgres",
-    logging: config.nodeEnv === "development" ? console.log : false, // Enable logging in development
+    logging: false,
     pool: {
-      max: 10, // Maximum number of connections
-      min: 0, // Minimum number of connections
-      acquire: 30000, // Maximum time to get connection
-      idle: 10000, // Maximum time connection can be idle
+      max: isProduction ? 20 : 5, // More connections for PgBouncer in production
+      min: isProduction ? 2 : 0,
+      acquire: 30000,
+      idle: 10000,
     },
-    dialectOptions: {
-      // PostgreSQL specific options
-      application_name: "construction_management_api",
+    dialectOptions: isProduction
+      ? {
+          // PgBouncer specific settings for production
+          application_name: "construction_management_api",
+          // Connection pooling optimizations
+          keepAlive: true,
+          keepAliveInitialDelayMillis: 10000,
+        }
+      : {},
+  }
+);
+
+// ✅ Create direct database instance for migrations and admin operations
+const directSequelize = new Sequelize(
+  config.database.direct.database,
+  config.database.direct.username,
+  config.database.direct.password,
+  {
+    host: config.database.direct.host,
+    port: config.database.direct.port,
+    dialect: "postgres",
+    logging: false,
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
     },
   }
 );
 
-// Test database connection
-const testConnection = async () => {
+// Test connections
+const testConnections = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ Database connection established successfully.");
     console.log(
-      `📊 Connected to: ${config.database.database}@${config.database.host}:${config.database.port}`
+      `✅ ${
+        isProduction ? "PgBouncer" : "Direct"
+      } connection established successfully.`
     );
+
+    await directSequelize.authenticate();
+    console.log("✅ Direct database connection established successfully.");
   } catch (error) {
-    console.error("❌ Database connection error:", error.message);
+    console.error("❌ Database connection error:", error);
     throw error;
   }
 };
 
-// Sync database (create tables if they don't exist)
-const syncDatabase = async (force = false) => {
-  try {
-    await sequelize.sync({ force });
-    console.log("✅ Database synchronized successfully.");
-  } catch (error) {
-    console.error("❌ Database sync error:", error.message);
-    throw error;
-  }
-};
-
-// Export sequelize instance and helper functions
+// Export both instances
 module.exports = {
-  sequelize,
-  testConnection,
-  syncDatabase,
+  sequelize, // Main connection (PgBouncer in production, direct in other environments)
+  directSequelize, // Direct connection for migrations
+  testConnections,
 };

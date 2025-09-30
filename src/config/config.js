@@ -1,33 +1,57 @@
 require("dotenv").config();
 
 module.exports = {
-  // Server configuration
-  port: process.env.PORT || 4000,
-  nodeEnv: process.env.NODE_ENV || "development",
+  port: process.env.PORT || 3003,
 
-  // Database configuration for local development
+  // Database configurations
   database: {
-    host: process.env.PGHOST || "localhost",
-    port: process.env.PGPORT || 5432,
-    database: process.env.PGDATABASE || "construction",
-    username: process.env.PGUSER || "postgres",
-    password: process.env.PGPASSWORD || "MobileST!!",
+    // Direct database connection (for migrations, etc.)
+    direct: {
+      host: process.env.PGHOST,
+      port: process.env.PGPORT,
+      database: process.env.PGDATABASE,
+      username: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+    },
+    // PgBouncer connection (for application queries)
+    pgbouncer: {
+      host: process.env.PGBOUNCER_HOST,
+      port: process.env.PGBOUNCER_PORT,
+      database: process.env.PGDATABASE,
+      username: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+    },
   },
 
-  // JWT configuration
-  jwtSecret:
-    process.env.JWT_SECRET || "franklyne_kibogo_campaign_secret_key_2024",
+  // Redis configuration
+  redis: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_PASSWORD,
+    db: process.env.REDIS_DB,
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+    keepAlive: 30000,
+    connectTimeout: 10000,
+    commandTimeout: 5000,
+  },
 
-  // Email service (optional for notifications)
+  // Prometheus metrics configuration
+  metrics: {
+    enabled: process.env.METRICS_ENABLED,
+    port: process.env.METRICS_PORT,
+    path: process.env.METRICS_PATH,
+  },
+
+  jwtSecret: process.env.JWT_SECRET,
   emailService: {
-    provider: process.env.EMAIL_SERVICE || "gmail",
-    user: process.env.EMAIL_USER || "",
-    pass: process.env.EMAIL_PASS || "",
+    provider: process.env.EMAIL_SERVICE,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
-
-  // SMS service (optional for notifications)
   smsService: {
-    apiKey: process.env.SMS_API_KEY || "",
-    apiSecret: process.env.SMS_API_SECRET || "",
+    apiKey: process.env.SMS_API_KEY,
+    apiSecret: process.env.SMS_API_SECRET,
   },
 };

@@ -1,6 +1,7 @@
 const { User, Issue } = require("../models");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const config = require("../config/config");
 
 // Get all users
 const getAllUsers = async (req, res) => {
@@ -357,7 +358,7 @@ const loginUser = async (req, res) => {
         email: user.email,
         type: user.type,
       },
-      process.env.JWT_SECRET || "your-secret-key",
+      config.jwtSecret,
       { expiresIn: "24h" }
     );
 
