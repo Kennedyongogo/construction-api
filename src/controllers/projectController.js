@@ -389,20 +389,17 @@ const updateProject = async (req, res) => {
       });
     }
 
-    // Handle blueprint_url from form data (existing URLs)
+    // Handle blueprint_url from form data (existing URLs that should be kept)
     if (updateData.blueprint_url) {
       const existingUrls = Array.isArray(updateData.blueprint_url)
         ? updateData.blueprint_url
         : [updateData.blueprint_url];
-      // Remove duplicates by using Set
-      const allUrls = [...finalBlueprintUrls, ...existingUrls];
-      finalBlueprintUrls = [...new Set(allUrls)];
+      // Replace with the URLs sent from frontend (this handles removals properly)
+      finalBlueprintUrls = existingUrls;
     }
 
     // Update the blueprint_url in updateData
-    if (finalBlueprintUrls.length > 0) {
-      updateData.blueprint_url = finalBlueprintUrls;
-    }
+    updateData.blueprint_url = finalBlueprintUrls;
 
     console.log("Updating project with data:", updateData);
     await project.update(updateData);
