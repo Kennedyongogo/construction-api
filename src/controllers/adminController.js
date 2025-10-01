@@ -135,7 +135,7 @@ const createAdmin = async (req, res) => {
     // Handle profile picture file upload
     let profile_picture = null;
     if (req.file) {
-      profile_picture = req.file.path; // Store the file path
+      profile_picture = `uploads/documents/${req.file.filename}`; // Store consistent path like blueprints
     }
 
     // Check if admin already exists
@@ -187,7 +187,7 @@ const updateAdmin = async (req, res) => {
     // Handle profile picture file upload
     let profile_picture = null;
     if (req.file) {
-      profile_picture = req.file.path; // Store the file path
+      profile_picture = `uploads/documents/${req.file.filename}`; // Store consistent path like blueprints
     }
 
     const admin = await Admin.findByPk(id);
