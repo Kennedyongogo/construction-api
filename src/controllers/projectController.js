@@ -373,11 +373,18 @@ const updateProject = async (req, res) => {
     }
 
     // Handle blueprint file uploads if present
-    let finalBlueprintUrls = Array.isArray(project.blueprint_url)
-      ? [...project.blueprint_url]
-      : project.blueprint_url
-      ? [project.blueprint_url]
-      : [];
+    let finalBlueprintUrls = [];
+
+    // Handle blueprint_url from form data (existing URLs that should be kept)
+    if (updateData.blueprint_url) {
+      const existingUrls = Array.isArray(updateData.blueprint_url)
+        ? updateData.blueprint_url
+        : updateData.blueprint_url
+        ? [updateData.blueprint_url]
+        : [];
+      // Start with URLs sent from frontend (this handles removals properly)
+      finalBlueprintUrls = existingUrls.filter(Boolean);
+    }
 
     // Handle new blueprint files from FormData
     if (req.files && req.files.length > 0) {
@@ -389,14 +396,10 @@ const updateProject = async (req, res) => {
       });
     }
 
-    // Handle blueprint_url from form data (existing URLs that should be kept)
-    if (updateData.blueprint_url) {
-      const existingUrls = Array.isArray(updateData.blueprint_url)
-        ? updateData.blueprint_url
-        : [updateData.blueprint_url];
-      // Replace with the URLs sent from frontend (this handles removals properly)
-      finalBlueprintUrls = existingUrls;
-    }
+    console.log("📸 Current blueprints in DB:", project.blueprint_url);
+    console.log("📸 Blueprints from frontend:", updateData.blueprint_url);
+    console.log("📸 New uploaded files:", req.files?.length || 0);
+    console.log("📸 Final blueprint URLs:", finalBlueprintUrls);
 
     // Update the blueprint_url in updateData
     updateData.blueprint_url = finalBlueprintUrls;
