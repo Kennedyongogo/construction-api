@@ -105,6 +105,23 @@ module.exports = (sequelize) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      floor_size: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        comment: "Floor size of the project (in square meters or ft²)",
+      },
+      construction_type: {
+        type: DataTypes.ENUM(
+          "building",
+          "infrastructure",
+          "industrial",
+          "specialized",
+          "other"
+        ),
+        allowNull: false,
+        defaultValue: "building",
+        comment: "Type of construction project",
+      },
     },
     {
       tableName: "projects",

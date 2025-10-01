@@ -8,6 +8,7 @@ const {
   changePassword,
   deleteAdmin,
   loginAdmin,
+  getDashboardStats,
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/auth");
 const { errorHandler } = require("../middleware/errorHandler");
@@ -33,6 +34,7 @@ router.post(
 router.post("/", uploadProfilePicture, handleUploadError, createAdmin); // Allow admin creation without authentication
 
 // Protected routes (require authentication)
+router.get("/dashboard/stats", authenticateToken, getDashboardStats);
 router.get("/", authenticateToken, getAllAdmins);
 router.get("/:id", authenticateToken, getAdminById);
 router.put(

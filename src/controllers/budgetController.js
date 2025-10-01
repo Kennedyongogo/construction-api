@@ -318,13 +318,13 @@ const updateBudget = async (req, res) => {
       });
     }
 
-    // Verify project exists if being updated
-    if (updateData.project_id) {
-      const project = await Project.findByPk(updateData.project_id);
-      if (!project) {
+    // Verify task exists if being updated
+    if (updateData.task_id) {
+      const task = await Task.findByPk(updateData.task_id);
+      if (!task) {
         return res.status(400).json({
           success: false,
-          message: "Project not found",
+          message: "Task not found",
         });
       }
     }
@@ -335,9 +335,31 @@ const updateBudget = async (req, res) => {
     const updatedBudget = await Budget.findByPk(id, {
       include: [
         {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
+          model: Task,
+          as: "task",
+          attributes: ["id", "name", "status", "progress_percent"],
+          include: [
+            {
+              model: Project,
+              as: "project",
+              attributes: ["id", "name", "status"],
+            },
+          ],
+        },
+        {
+          model: Material,
+          as: "material",
+          attributes: ["id", "name", "unit", "unit_cost"],
+        },
+        {
+          model: Equipment,
+          as: "equipment",
+          attributes: ["id", "name", "type", "rental_cost_per_day"],
+        },
+        {
+          model: Labor,
+          as: "labor",
+          attributes: ["id", "worker_name", "worker_type", "hourly_rate"],
         },
       ],
     });

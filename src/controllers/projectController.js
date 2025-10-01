@@ -266,6 +266,8 @@ const createProject = async (req, res) => {
       blueprint_url,
       documents,
       notes,
+      floor_size,
+      construction_type,
     } = req.body;
 
     // Verify engineer exists
@@ -319,6 +321,8 @@ const createProject = async (req, res) => {
       blueprint_url: finalBlueprintUrls,
       documents,
       notes,
+      floor_size,
+      construction_type: construction_type || "building",
     });
 
     // Fetch the created project with associations
