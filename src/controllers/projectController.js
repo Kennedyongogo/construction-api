@@ -353,6 +353,11 @@ const updateProject = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
+    console.log("📦 Update request received:");
+    console.log("📦 Body keys:", Object.keys(req.body));
+    console.log("📦 Files received:", req.files?.length || 0);
+    console.log("📦 blueprint_url in body:", req.body.blueprint_url);
+
     const project = await Project.findByPk(id);
     if (!project) {
       return res.status(404).json({
