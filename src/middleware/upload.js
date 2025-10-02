@@ -9,6 +9,14 @@ const storage = multer.diskStorage({
     let uploadPath;
     if (file.fieldname === "blueprint" || file.fieldname === "blueprints") {
       uploadPath = path.join(__dirname, "..", "..", "uploads", "projects");
+    } else if (file.fieldname === "documents") {
+      uploadPath = path.join(
+        __dirname,
+        "..",
+        "..",
+        "uploads",
+        "projectdocuments"
+      );
     } else if (file.fieldname === "profile_picture") {
       uploadPath = path.join(__dirname, "..", "..", "uploads", "documents");
     } else if (
@@ -90,7 +98,10 @@ const upload = multer({
 const uploadBlueprint = upload.single("blueprint");
 
 // Middleware for multiple blueprint files upload
-const uploadBlueprints = upload.array("blueprints", 10); // Max 10 blueprint files
+const uploadBlueprints = upload.fields([
+  { name: "blueprints", maxCount: 10 },
+  { name: "documents", maxCount: 10 },
+]); // Max 10 blueprint files and 10 document files
 
 // Middleware for multiple file upload (documents)
 const uploadDocuments = upload.array("documents", 10); // Max 10 files

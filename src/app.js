@@ -40,6 +40,12 @@ app.use((req, res, next) => {
 // Static file serving for project documents and images
 const projectsUploadPath = path.join(__dirname, "..", "uploads", "projects");
 const documentsUploadPath = path.join(__dirname, "..", "uploads", "documents");
+const projectDocumentsUploadPath = path.join(
+  __dirname,
+  "..",
+  "uploads",
+  "projectdocuments"
+);
 const progressUpdatesUploadPath = path.join(
   __dirname,
   "..",
@@ -49,11 +55,16 @@ const progressUpdatesUploadPath = path.join(
 
 console.log("📁 Projects upload path:", projectsUploadPath);
 console.log("📁 Documents upload path:", documentsUploadPath);
+console.log("📁 Project Documents upload path:", projectDocumentsUploadPath);
 console.log("📁 Progress Updates upload path:", progressUpdatesUploadPath);
 console.log("📁 Projects directory exists:", fs.existsSync(projectsUploadPath));
 console.log(
   "📁 Documents directory exists:",
   fs.existsSync(documentsUploadPath)
+);
+console.log(
+  "📁 Project Documents directory exists:",
+  fs.existsSync(projectDocumentsUploadPath)
 );
 console.log(
   "📁 Progress Updates directory exists:",
@@ -62,6 +73,10 @@ console.log(
 
 app.use("/uploads/projects", express.static(projectsUploadPath));
 app.use("/uploads/documents", express.static(documentsUploadPath));
+app.use(
+  "/uploads/projectdocuments",
+  express.static(projectDocumentsUploadPath)
+);
 app.use("/uploads/progress-updates", express.static(progressUpdatesUploadPath));
 
 // API routes

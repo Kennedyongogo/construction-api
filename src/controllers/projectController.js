@@ -254,12 +254,23 @@ const createProject = async (req, res) => {
     }
 
     // Handle multiple blueprint files upload
-    if (req.files && req.files.length > 0) {
-      const blueprintFiles = req.files.filter(
-        (file) => file.fieldname === "blueprints"
-      );
-      blueprintFiles.forEach((file) => {
+    if (req.files && req.files.blueprints && req.files.blueprints.length > 0) {
+      req.files.blueprints.forEach((file) => {
         finalBlueprintUrls.push(`uploads/projects/${file.filename}`);
+      });
+    }
+
+    // Handle document file uploads if present
+    let finalDocumentUrls = Array.isArray(documents)
+      ? documents
+      : documents
+      ? [documents]
+      : [];
+
+    // Handle document files upload
+    if (req.files && req.files.documents && req.files.documents.length > 0) {
+      req.files.documents.forEach((file) => {
+        finalDocumentUrls.push(`uploads/projectdocuments/${file.filename}`);
       });
     }
 
@@ -281,7 +292,7 @@ const createProject = async (req, res) => {
       engineer_in_charge,
       progress_percent: progress_percent || 0,
       blueprint_url: finalBlueprintUrls,
-      documents,
+      document_urls: finalDocumentUrls,
       notes,
       floor_size,
       construction_type: construction_type || "building",
@@ -358,12 +369,30 @@ const updateProject = async (req, res) => {
     }
 
     // Handle new blueprint files from FormData
-    if (req.files && req.files.length > 0) {
-      const blueprintFiles = req.files.filter(
-        (file) => file.fieldname === "blueprints"
-      );
-      blueprintFiles.forEach((file) => {
+    if (req.files && req.files.blueprints && req.files.blueprints.length > 0) {
+      req.files.blueprints.forEach((file) => {
         finalBlueprintUrls.push(`uploads/projects/${file.filename}`);
+      });
+    }
+
+    // Handle document file uploads if present
+    let finalDocumentUrls = [];
+
+    // Handle document_urls from form data (existing URLs that should be kept)
+    if (updateData.document_urls) {
+      const existingUrls = Array.isArray(updateData.document_urls)
+        ? updateData.document_urls
+        : updateData.document_urls
+        ? [updateData.document_urls]
+        : [];
+      // Start with URLs sent from frontend (this handles removals properly)
+      finalDocumentUrls = existingUrls.filter(Boolean);
+    }
+
+    // Handle new document files from FormData
+    if (req.files && req.files.documents && req.files.documents.length > 0) {
+      req.files.documents.forEach((file) => {
+        finalDocumentUrls.push(`uploads/projectdocuments/${file.filename}`);
       });
     }
 
@@ -371,9 +400,11 @@ const updateProject = async (req, res) => {
     console.log("📸 Blueprints from frontend:", updateData.blueprint_url);
     console.log("📸 New uploaded files:", req.files?.length || 0);
     console.log("📸 Final blueprint URLs:", finalBlueprintUrls);
+    console.log("📄 Final document URLs:", finalDocumentUrls);
 
-    // Update the blueprint_url in updateData
+    // Update the blueprint_url and document_urls in updateData
     updateData.blueprint_url = finalBlueprintUrls;
+    updateData.document_urls = finalDocumentUrls;
 
     console.log("Updating project with data:", updateData);
     await project.update(updateData);
