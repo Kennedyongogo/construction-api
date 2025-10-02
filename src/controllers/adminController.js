@@ -629,31 +629,36 @@ const getDashboardStats = async (req, res) => {
     // === TOP ENGINEERS BY PROJECT COUNT ===
     let topEngineers = [];
     try {
-      topEngineers = await Admin.findAll({
-        attributes: [
-          "id",
-          "name",
-          "email",
-          [
-            sequelize.fn("COUNT", sequelize.col("managedProjects.id")),
-            "projectCount",
-          ],
-        ],
-        include: [
-          {
-            model: Project,
-            as: "managedProjects",
-            attributes: [],
-            where:
-              Object.keys(projectFilter).length > 0 ? projectFilter : undefined,
-            required: false,
-          },
-        ],
-        group: ["Admin.id", "Admin.name", "Admin.email"],
-        order: [[sequelize.literal("projectCount"), "DESC"]],
-        limit: 5,
-        subQuery: false,
-      });
+      // Use raw SQL query to avoid Sequelize alias issues
+      const [results] = await sequelize.query(
+        `
+        SELECT 
+          a.id,
+          a.name,
+          a.email,
+          COUNT(p.id) as "projectCount"
+        FROM admins a
+        LEFT JOIN projects p ON a.id = p.engineer_in_charge
+        ${
+          Object.keys(projectFilter).length > 0
+            ? "WHERE " +
+              Object.keys(projectFilter)
+                .map((key) => `p.${key} = :${key}`)
+                .join(" AND ")
+            : ""
+        }
+        GROUP BY a.id, a.name, a.email
+        HAVING COUNT(p.id) > 0
+        ORDER BY COUNT(p.id) DESC, a.name ASC
+        LIMIT 5
+      `,
+        {
+          replacements: projectFilter,
+          type: sequelize.QueryTypes.SELECT,
+        }
+      );
+
+      topEngineers = results;
     } catch (error) {
       console.error("Error fetching top engineers:", error.message);
       // Fallback: get all admins without project count
@@ -924,9 +929,16 @@ const getDashboardStats = async (req, res) => {
         attributes: ["id", "description", "progress_percent", "createdAt"],
         include: [
           {
-            model: Project,
-            as: "project",
-            attributes: ["name", "status"],
+            model: Task,
+            as: "task",
+            attributes: ["id", "name", "status"],
+            include: [
+              {
+                model: Project,
+                as: "project",
+                attributes: ["name", "status"],
+              },
+            ],
           },
         ],
       });
@@ -935,13 +947,13 @@ const getDashboardStats = async (req, res) => {
       recentProgressUpdates = [];
     }
 
-    // === DOCUMENTS BY PROJECT ===
-    const documentsPerProject = await Document.findAll({
+    // === DOCUMENTS BY TYPE ===
+    const documentsPerType = await Document.findAll({
       attributes: [
-        "project_id",
+        "document_type",
         [sequelize.fn("COUNT", sequelize.col("id")), "documentCount"],
       ],
-      group: ["project_id"],
+      group: ["document_type"],
       raw: true,
     });
 
@@ -1080,7 +1092,7 @@ const getDashboardStats = async (req, res) => {
           progressUpdates: recentProgressUpdates,
         },
         documents: {
-          perProject: documentsPerProject,
+          perType: documentsPerType,
         },
         engineers: {
           top: topEngineers,
@@ -1097,6 +1109,192 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
+// Get projects by date range for bar charts
+const getProjectsByDate = async (req, res) => {
+  try {
+    const { startDate, endDate, groupBy = "day" } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Start date and end date are required",
+      });
+    }
+
+    // Validate groupBy parameter
+    const validGroupBy = ["day", "week", "month"];
+    if (!validGroupBy.includes(groupBy)) {
+      return res.status(400).json({
+        success: false,
+        message: "groupBy must be one of: day, week, month",
+      });
+    }
+
+    let dateFormat;
+    switch (groupBy) {
+      case "day":
+        dateFormat = "YYYY-MM-DD";
+        break;
+      case "week":
+        dateFormat = "YYYY-WW"; // Year-Week
+        break;
+      case "month":
+        dateFormat = "YYYY-MM";
+        break;
+    }
+
+    const results = await sequelize.query(
+      `
+      SELECT 
+        TO_CHAR("createdAt", :dateFormat) as date,
+        COUNT(*) as count,
+        status
+      FROM projects 
+      WHERE "createdAt" BETWEEN :startDate AND :endDate
+      GROUP BY TO_CHAR("createdAt", :dateFormat), status
+      ORDER BY date ASC, status ASC
+    `,
+      {
+        replacements: {
+          dateFormat,
+          startDate,
+          endDate,
+        },
+        type: sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    console.log("Raw query results:", results);
+
+    // Group results by date
+    const groupedData = {};
+    results.forEach((item) => {
+      if (!groupedData[item.date]) {
+        groupedData[item.date] = {
+          date: item.date,
+          total: 0,
+          byStatus: {},
+        };
+      }
+      groupedData[item.date].total += parseInt(item.count);
+      groupedData[item.date].byStatus[item.status] = parseInt(item.count);
+    });
+
+    const chartData = Object.values(groupedData);
+
+    res.json({
+      success: true,
+      data: {
+        chartData,
+        summary: {
+          totalProjects: chartData.reduce((sum, item) => sum + item.total, 0),
+          dateRange: { startDate, endDate },
+          groupBy,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching projects by date:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching projects by date",
+      error: error.message,
+    });
+  }
+};
+
+// Get tasks by date range for bar charts
+const getTasksByDate = async (req, res) => {
+  try {
+    const { startDate, endDate, groupBy = "day" } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Start date and end date are required",
+      });
+    }
+
+    // Validate groupBy parameter
+    const validGroupBy = ["day", "week", "month"];
+    if (!validGroupBy.includes(groupBy)) {
+      return res.status(400).json({
+        success: false,
+        message: "groupBy must be one of: day, week, month",
+      });
+    }
+
+    let dateFormat;
+    switch (groupBy) {
+      case "day":
+        dateFormat = "YYYY-MM-DD";
+        break;
+      case "week":
+        dateFormat = "YYYY-WW"; // Year-Week
+        break;
+      case "month":
+        dateFormat = "YYYY-MM";
+        break;
+    }
+
+    const results = await sequelize.query(
+      `
+      SELECT 
+        TO_CHAR("createdAt", :dateFormat) as date,
+        COUNT(*) as count,
+        status
+      FROM tasks 
+      WHERE "createdAt" BETWEEN :startDate AND :endDate
+      GROUP BY TO_CHAR("createdAt", :dateFormat), status
+      ORDER BY date ASC, status ASC
+    `,
+      {
+        replacements: {
+          dateFormat,
+          startDate,
+          endDate,
+        },
+        type: sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    // Group results by date
+    const groupedData = {};
+    results.forEach((item) => {
+      if (!groupedData[item.date]) {
+        groupedData[item.date] = {
+          date: item.date,
+          total: 0,
+          byStatus: {},
+        };
+      }
+      groupedData[item.date].total += parseInt(item.count);
+      groupedData[item.date].byStatus[item.status] = parseInt(item.count);
+    });
+
+    const chartData = Object.values(groupedData);
+
+    res.json({
+      success: true,
+      data: {
+        chartData,
+        summary: {
+          totalTasks: chartData.reduce((sum, item) => sum + item.total, 0),
+          dateRange: { startDate, endDate },
+          groupBy,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching tasks by date:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching tasks by date",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllAdmins,
   getAdminById,
@@ -1106,4 +1304,6 @@ module.exports = {
   deleteAdmin,
   loginAdmin,
   getDashboardStats,
+  getProjectsByDate,
+  getTasksByDate,
 };

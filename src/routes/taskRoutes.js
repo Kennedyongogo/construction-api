@@ -9,6 +9,7 @@ const {
   deleteTask,
   getTasksByProject,
   getOverdueTasks,
+  getTaskProgressUpdates,
 } = require("../controllers/taskController");
 const { authenticateToken } = require("../middleware/auth");
 const { errorHandler } = require("../middleware/errorHandler");
@@ -21,6 +22,7 @@ router.get("/", getAllTasks);
 router.get("/overdue", getOverdueTasks);
 router.get("/project/:project_id", getTasksByProject);
 router.get("/:id", getTaskById);
+router.get("/:id/progress-updates", getTaskProgressUpdates);
 router.post("/", createTask);
 router.put("/:id", updateTask);
 router.put("/:id/status", updateTaskStatus);

@@ -1,13 +1,13 @@
-const { ProgressUpdate, Project } = require("../models");
+const { ProgressUpdate, Task, Project } = require("../models");
 
 // Get all progress updates
 const getAllProgressUpdates = async (req, res) => {
   try {
-    const { project_id, page, limit } = req.query;
+    const { task_id, project_id, page, limit } = req.query;
 
     let whereClause = {};
-    if (project_id) {
-      whereClause.project_id = project_id;
+    if (task_id) {
+      whereClause.task_id = task_id;
     }
 
     // Parse pagination parameters
@@ -23,9 +23,16 @@ const getAllProgressUpdates = async (req, res) => {
       where: whereClause,
       include: [
         {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status", "progress_percent"],
+          model: Task,
+          as: "task",
+          attributes: ["id", "title", "status", "progress_percent"],
+          include: [
+            {
+              model: Project,
+              as: "project",
+              attributes: ["id", "name", "status"],
+            },
+          ],
         },
       ],
       order: [["date", "DESC"]],
@@ -58,15 +65,22 @@ const getProgressUpdateById = async (req, res) => {
     const progressUpdate = await ProgressUpdate.findByPk(id, {
       include: [
         {
-          model: Project,
-          as: "project",
+          model: Task,
+          as: "task",
           attributes: [
             "id",
-            "name",
+            "title",
             "status",
             "progress_percent",
             "start_date",
             "end_date",
+          ],
+          include: [
+            {
+              model: Project,
+              as: "project",
+              attributes: ["id", "name", "status"],
+            },
           ],
         },
       ],
@@ -96,15 +110,14 @@ const getProgressUpdateById = async (req, res) => {
 // Create new progress update
 const createProgressUpdate = async (req, res) => {
   try {
-    const { project_id, description, progress_percent, images, date } =
-      req.body;
+    const { task_id, description, progress_percent, images, date } = req.body;
 
-    // Verify project exists
-    const project = await Project.findByPk(project_id);
-    if (!project) {
+    // Verify task exists
+    const task = await Task.findByPk(task_id);
+    if (!task) {
       return res.status(400).json({
         success: false,
-        message: "Project not found",
+        message: "Task not found",
       });
     }
 
@@ -116,17 +129,27 @@ const createProgressUpdate = async (req, res) => {
       });
     }
 
+    // Handle image uploads if files are provided
+    let imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(
+        (file) => `/uploads/progress-updates/${file.filename}`
+      );
+    } else if (images && Array.isArray(images)) {
+      imageUrls = images;
+    }
+
     const progressUpdate = await ProgressUpdate.create({
-      project_id,
+      task_id,
       description,
       progress_percent,
-      images: images || [],
+      images: imageUrls,
       date: date || new Date(),
     });
 
-    // Update project progress if this is the latest update
-    if (progress_percent > project.progress_percent) {
-      await project.update({ progress_percent });
+    // Update task progress if this is the latest update
+    if (progress_percent > task.progress_percent) {
+      await task.update({ progress_percent });
     }
 
     // Fetch the created progress update with associations
@@ -135,9 +158,16 @@ const createProgressUpdate = async (req, res) => {
       {
         include: [
           {
-            model: Project,
-            as: "project",
-            attributes: ["id", "name", "status"],
+            model: Task,
+            as: "task",
+            attributes: ["id", "title", "status"],
+            include: [
+              {
+                model: Project,
+                as: "project",
+                attributes: ["id", "name", "status"],
+              },
+            ],
           },
         ],
       }
@@ -185,24 +215,32 @@ const updateProgressUpdate = async (req, res) => {
       }
     }
 
-    // Verify project exists if being updated
-    if (updateData.project_id) {
-      const project = await Project.findByPk(updateData.project_id);
-      if (!project) {
+    // Verify task exists if being updated
+    if (updateData.task_id) {
+      const task = await Task.findByPk(updateData.task_id);
+      if (!task) {
         return res.status(400).json({
           success: false,
-          message: "Project not found",
+          message: "Task not found",
         });
       }
     }
 
+    // Handle image uploads if files are provided
+    if (req.files && req.files.length > 0) {
+      const imageUrls = req.files.map(
+        (file) => `/uploads/progress-updates/${file.filename}`
+      );
+      updateData.images = imageUrls;
+    }
+
     await progressUpdate.update(updateData);
 
-    // Update project progress if this is the latest update
+    // Update task progress if this is the latest update
     if (updateData.progress_percent !== undefined) {
-      const project = await Project.findByPk(progressUpdate.project_id);
-      if (project && updateData.progress_percent > project.progress_percent) {
-        await project.update({ progress_percent: updateData.progress_percent });
+      const task = await Task.findByPk(progressUpdate.task_id);
+      if (task && updateData.progress_percent > task.progress_percent) {
+        await task.update({ progress_percent: updateData.progress_percent });
       }
     }
 
@@ -210,9 +248,16 @@ const updateProgressUpdate = async (req, res) => {
     const updatedProgressUpdate = await ProgressUpdate.findByPk(id, {
       include: [
         {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
+          model: Task,
+          as: "task",
+          attributes: ["id", "title", "status"],
+          include: [
+            {
+              model: Project,
+              as: "project",
+              attributes: ["id", "name", "status"],
+            },
+          ],
         },
       ],
     });
@@ -261,19 +306,26 @@ const deleteProgressUpdate = async (req, res) => {
   }
 };
 
-// Get progress updates by project
-const getProgressUpdatesByProject = async (req, res) => {
+// Get progress updates by task
+const getProgressUpdatesByTask = async (req, res) => {
   try {
-    const { project_id } = req.params;
+    const { task_id } = req.params;
     const { limit = 10, offset = 0 } = req.query;
 
     const progressUpdates = await ProgressUpdate.findAndCountAll({
-      where: { project_id },
+      where: { task_id },
       include: [
         {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
+          model: Task,
+          as: "task",
+          attributes: ["id", "title", "status"],
+          include: [
+            {
+              model: Project,
+              as: "project",
+              attributes: ["id", "name", "status"],
+            },
+          ],
         },
       ],
       order: [["date", "DESC"]],
@@ -288,10 +340,10 @@ const getProgressUpdatesByProject = async (req, res) => {
       total_pages: Math.ceil(progressUpdates.count / limit),
     });
   } catch (error) {
-    console.error("Error fetching progress updates by project:", error);
+    console.error("Error fetching progress updates by task:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching progress updates by project",
+      message: "Error fetching progress updates by task",
       error: error.message,
     });
   }
@@ -305,9 +357,16 @@ const getLatestProgressUpdates = async (req, res) => {
     const progressUpdates = await ProgressUpdate.findAll({
       include: [
         {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status", "progress_percent"],
+          model: Task,
+          as: "task",
+          attributes: ["id", "title", "status", "progress_percent"],
+          include: [
+            {
+              model: Project,
+              as: "project",
+              attributes: ["id", "name", "status"],
+            },
+          ],
         },
       ],
       order: [["date", "DESC"]],
@@ -329,13 +388,13 @@ const getLatestProgressUpdates = async (req, res) => {
   }
 };
 
-// Get progress timeline for project
+// Get progress timeline for task
 const getProgressTimeline = async (req, res) => {
   try {
-    const { project_id } = req.params;
+    const { task_id } = req.params;
 
     const progressUpdates = await ProgressUpdate.findAll({
-      where: { project_id },
+      where: { task_id },
       attributes: ["id", "description", "progress_percent", "images", "date"],
       order: [["date", "ASC"]],
     });
@@ -361,7 +420,7 @@ const getProgressTimeline = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        project_id,
+        task_id,
         timeline,
         total_updates: timeline.length,
         milestones: timeline.filter((item) => item.is_milestone),
@@ -377,13 +436,46 @@ const getProgressTimeline = async (req, res) => {
   }
 };
 
+// Upload progress update images
+const uploadProgressUpdateImages = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No images provided",
+      });
+    }
+
+    const imageUrls = req.files.map(
+      (file) => `/uploads/progress-updates/${file.filename}`
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Images uploaded successfully",
+      data: {
+        images: imageUrls,
+        count: imageUrls.length,
+      },
+    });
+  } catch (error) {
+    console.error("Error uploading progress update images:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error uploading images",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllProgressUpdates,
   getProgressUpdateById,
   createProgressUpdate,
   updateProgressUpdate,
   deleteProgressUpdate,
-  getProgressUpdatesByProject,
+  getProgressUpdatesByTask,
   getLatestProgressUpdates,
   getProgressTimeline,
+  uploadProgressUpdateImages,
 };

@@ -7,7 +7,8 @@ const {
   uploadDocuments,
   updateDocument,
   deleteDocument,
-  getDocumentsByProject,
+  getDocumentsByType,
+  getDocumentsByCategory,
   getDocumentsByFileType,
   getDocumentsByUploader,
   getDocumentStatistics,
@@ -25,9 +26,10 @@ router.use(authenticateToken);
 // Document routes
 router.get("/", getAllDocuments);
 router.get("/stats", getDocumentStatistics);
-router.get("/type/:file_type", getDocumentsByFileType);
-router.get("/uploader/:uploaded_by", getDocumentsByUploader);
-router.get("/project/:project_id", getDocumentsByProject);
+router.get("/type/:document_type", getDocumentsByType);
+router.get("/category/:category", getDocumentsByCategory);
+router.get("/file-type/:file_type", getDocumentsByFileType);
+router.get("/uploader/:admin_id", getDocumentsByUploader);
 router.get("/:id", getDocumentById);
 
 // File upload routes

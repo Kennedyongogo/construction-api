@@ -6,8 +6,6 @@ const {
   Equipment,
   Labor,
   Budget,
-  Document,
-  ProgressUpdate,
   Issue,
 } = require("../models");
 const path = require("path");
@@ -80,18 +78,6 @@ const getAllProjects = async (req, res) => {
               attributes: ["id", "category", "amount", "type", "entry_type"],
             },
           ],
-        },
-        {
-          model: Document,
-          as: "documents",
-          attributes: ["id", "file_name", "file_type", "createdAt"],
-        },
-        {
-          model: ProgressUpdate,
-          as: "progressUpdates",
-          attributes: ["id", "description", "progress_percent", "date"],
-          order: [["date", "DESC"]],
-          limit: 5,
         },
         {
           model: Issue,
@@ -176,30 +162,6 @@ const getProjectById = async (req, res) => {
               ],
             },
           ],
-        },
-        {
-          model: Document,
-          as: "documents",
-          attributes: ["id", "file_name", "file_type", "file_url", "createdAt"],
-          include: [
-            {
-              model: Admin,
-              as: "uploadedBy",
-              attributes: ["id", "name", "email"],
-            },
-          ],
-        },
-        {
-          model: ProgressUpdate,
-          as: "progressUpdates",
-          attributes: [
-            "id",
-            "description",
-            "progress_percent",
-            "images",
-            "date",
-          ],
-          order: [["date", "DESC"]],
         },
         {
           model: Issue,
@@ -425,25 +387,9 @@ const updateProject = async (req, res) => {
           attributes: ["id", "name", "email", "role", "phone"],
         },
         {
-          model: Document,
-          as: "documents",
-          attributes: ["id", "file_name", "file_url", "file_type", "createdAt"],
-        },
-        {
           model: Task,
           as: "tasks",
           attributes: ["id", "name", "status", "progress_percent", "due_date"],
-        },
-        {
-          model: ProgressUpdate,
-          as: "progressUpdates",
-          attributes: [
-            "id",
-            "description",
-            "date",
-            "progress_percent",
-            "images",
-          ],
         },
         {
           model: Issue,

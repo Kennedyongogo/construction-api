@@ -9,11 +9,11 @@ module.exports = (sequelize) => {
         primaryKey: true,
         defaultValue: DataTypes.UUIDV4,
       },
-      project_id: {
+      task_id: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: "projects",
+          model: "tasks",
           key: "id",
         },
       },
@@ -32,6 +32,7 @@ module.exports = (sequelize) => {
       images: {
         type: DataTypes.JSON,
         allowNull: true,
+        defaultValue: [],
       },
       date: {
         type: DataTypes.DATEONLY,

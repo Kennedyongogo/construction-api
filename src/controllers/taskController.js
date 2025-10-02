@@ -6,6 +6,7 @@ const {
   Equipment,
   Labor,
   Budget,
+  ProgressUpdate,
 } = require("../models");
 
 // Get all tasks
@@ -274,6 +275,64 @@ const updateTask = async (req, res) => {
       });
     }
 
+    // Check if status is changing from pending
+    const statusChangingFromPending =
+      updateData.status &&
+      task.status === "pending" &&
+      updateData.status !== "pending";
+
+    // Check if progress is changing from 0
+    const progressChangingFromZero =
+      updateData.progress_percent !== undefined &&
+      task.progress_percent === 0 &&
+      updateData.progress_percent > 0;
+
+    // If either condition is true, require progress update
+    if (statusChangingFromPending || progressChangingFromZero) {
+      if (!updateData.progress_update) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Progress update is required when changing task status or progress",
+          required_fields: ["description", "progress_percent", "date"],
+          current_status: task.status,
+          new_status: updateData.status,
+          current_progress: task.progress_percent,
+          new_progress: updateData.progress_percent,
+        });
+      }
+
+      // Validate progress update data
+      if (
+        !updateData.progress_update.description ||
+        updateData.progress_update.progress_percent === undefined ||
+        !updateData.progress_update.date
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Progress update must include description, progress_percent, and date",
+          missing_fields: {
+            description: !updateData.progress_update.description,
+            progress_percent:
+              updateData.progress_update.progress_percent === undefined,
+            date: !updateData.progress_update.date,
+          },
+        });
+      }
+
+      // Validate progress percentage
+      if (
+        updateData.progress_update.progress_percent < 0 ||
+        updateData.progress_update.progress_percent > 100
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Progress percentage must be between 0 and 100",
+        });
+      }
+    }
+
     // Verify project exists if being updated
     if (updateData.project_id) {
       const project = await Project.findByPk(updateData.project_id);
@@ -296,7 +355,21 @@ const updateTask = async (req, res) => {
       }
     }
 
+    // Update the task
     await task.update(updateData);
+
+    // If progress update was provided, create it
+    if (updateData.progress_update) {
+      const progressUpdateData = {
+        task_id: id,
+        description: updateData.progress_update.description,
+        progress_percent: updateData.progress_update.progress_percent,
+        date: updateData.progress_update.date,
+        images: updateData.progress_update.images || [],
+      };
+
+      await ProgressUpdate.create(progressUpdateData);
+    }
 
     // Fetch updated task with associations
     const updatedTask = await Task.findByPk(id, {
@@ -333,17 +406,20 @@ const updateTask = async (req, res) => {
 const updateTaskStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, progress_percent } = req.body;
+    const { status, progress_percent, progress_update } = req.body;
 
     const validStatuses = ["pending", "in_progress", "completed"];
-    if (!validStatuses.includes(status)) {
+    if (status && !validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
         message: "Invalid status",
       });
     }
 
-    if (progress_percent < 0 || progress_percent > 100) {
+    if (
+      progress_percent !== undefined &&
+      (progress_percent < 0 || progress_percent > 100)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Progress percentage must be between 0 and 100",
@@ -358,7 +434,76 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
+    // Check if status is changing from pending
+    const statusChangingFromPending =
+      status && task.status === "pending" && status !== "pending";
+
+    // Check if progress is changing from 0
+    const progressChangingFromZero =
+      progress_percent !== undefined &&
+      task.progress_percent === 0 &&
+      progress_percent > 0;
+
+    // If either condition is true, require progress update
+    if (statusChangingFromPending || progressChangingFromZero) {
+      if (!progress_update) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Progress update is required when changing task status or progress",
+          required_fields: ["description", "progress_percent", "date"],
+          current_status: task.status,
+          new_status: status,
+          current_progress: task.progress_percent,
+          new_progress: progress_percent,
+        });
+      }
+
+      // Validate progress update data
+      if (
+        !progress_update.description ||
+        progress_update.progress_percent === undefined ||
+        !progress_update.date
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Progress update must include description, progress_percent, and date",
+          missing_fields: {
+            description: !progress_update.description,
+            progress_percent: progress_update.progress_percent === undefined,
+            date: !progress_update.date,
+          },
+        });
+      }
+
+      // Validate progress percentage in progress update
+      if (
+        progress_update.progress_percent < 0 ||
+        progress_update.progress_percent > 100
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Progress update percentage must be between 0 and 100",
+        });
+      }
+    }
+
+    // Update the task
     await task.update({ status, progress_percent });
+
+    // If progress update was provided, create it
+    if (progress_update) {
+      const progressUpdateData = {
+        task_id: id,
+        description: progress_update.description,
+        progress_percent: progress_update.progress_percent,
+        date: progress_update.date,
+        images: progress_update.images || [],
+      };
+
+      await ProgressUpdate.create(progressUpdateData);
+    }
 
     res.status(200).json({
       success: true,
@@ -481,6 +626,55 @@ const getOverdueTasks = async (req, res) => {
   }
 };
 
+// Get progress updates for a specific task
+const getTaskProgressUpdates = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    // Verify task exists
+    const task = await Task.findByPk(id);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found",
+      });
+    }
+
+    // Parse pagination parameters
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Get total count for pagination
+    const totalCount = await ProgressUpdate.count({ where: { task_id: id } });
+
+    // Get paginated progress updates
+    const progressUpdates = await ProgressUpdate.findAll({
+      where: { task_id: id },
+      order: [["date", "DESC"]],
+      limit: limitNum,
+      offset: offset,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: progressUpdates,
+      count: totalCount,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(totalCount / limitNum),
+    });
+  } catch (error) {
+    console.error("Error fetching task progress updates:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching task progress updates",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllTasks,
   getTaskById,
@@ -490,4 +684,5 @@ module.exports = {
   deleteTask,
   getTasksByProject,
   getOverdueTasks,
+  getTaskProgressUpdates,
 };

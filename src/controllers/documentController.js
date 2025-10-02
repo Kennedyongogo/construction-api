@@ -1,14 +1,18 @@
-const { Document, Project, Admin } = require("../models");
+const { Document, Admin } = require("../models");
 const path = require("path");
 
 // Get all documents
 const getAllDocuments = async (req, res) => {
   try {
-    const { project_id, file_type, uploaded_by, page, limit } = req.query;
+    const { document_type, category, file_type, uploaded_by, page, limit } =
+      req.query;
 
     let whereClause = {};
-    if (project_id) {
-      whereClause.project_id = project_id;
+    if (document_type) {
+      whereClause.document_type = document_type;
+    }
+    if (category) {
+      whereClause.category = category;
     }
     if (file_type) {
       whereClause.file_type = file_type;
@@ -29,11 +33,6 @@ const getAllDocuments = async (req, res) => {
     const documents = await Document.findAll({
       where: whereClause,
       include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status", "progress_percent"],
-        },
         {
           model: Admin,
           as: "uploadedBy",
@@ -70,18 +69,6 @@ const getDocumentById = async (req, res) => {
     const document = await Document.findByPk(id, {
       include: [
         {
-          model: Project,
-          as: "project",
-          attributes: [
-            "id",
-            "name",
-            "status",
-            "progress_percent",
-            "start_date",
-            "end_date",
-          ],
-        },
-        {
           model: Admin,
           as: "uploadedBy",
           attributes: ["id", "name", "email", "role", "phone"],
@@ -113,22 +100,14 @@ const getDocumentById = async (req, res) => {
 // Create new document (with file upload)
 const createDocument = async (req, res) => {
   try {
-    const { project_id, uploaded_by_admin_id } = req.body;
+    const { document_type, category, description, uploaded_by_admin_id } =
+      req.body;
 
     // Check if file was uploaded
     if (!req.file) {
       return res.status(400).json({
         success: false,
         message: "No file uploaded",
-      });
-    }
-
-    // Verify project exists
-    const project = await Project.findByPk(project_id);
-    if (!project) {
-      return res.status(400).json({
-        success: false,
-        message: "Project not found",
       });
     }
 
@@ -147,7 +126,9 @@ const createDocument = async (req, res) => {
     const file_url = `/uploads/documents/${req.file.filename}`;
 
     const document = await Document.create({
-      project_id,
+      document_type: document_type || "company_document",
+      category,
+      description,
       file_name,
       file_type,
       file_url,
@@ -157,11 +138,6 @@ const createDocument = async (req, res) => {
     // Fetch the created document with associations
     const createdDocument = await Document.findByPk(document.id, {
       include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
-        },
         {
           model: Admin,
           as: "uploadedBy",
@@ -188,22 +164,14 @@ const createDocument = async (req, res) => {
 // Upload multiple documents
 const uploadDocuments = async (req, res) => {
   try {
-    const { project_id, uploaded_by_admin_id } = req.body;
+    const { document_type, category, description, uploaded_by_admin_id } =
+      req.body;
 
     // Check if files were uploaded
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
         message: "No files uploaded",
-      });
-    }
-
-    // Verify project exists
-    const project = await Project.findByPk(project_id);
-    if (!project) {
-      return res.status(400).json({
-        success: false,
-        message: "Project not found",
       });
     }
 
@@ -224,7 +192,9 @@ const uploadDocuments = async (req, res) => {
       const file_url = `/uploads/documents/${file.filename}`;
 
       const document = await Document.create({
-        project_id,
+        document_type: document_type || "company_document",
+        category,
+        description,
         file_name,
         file_type,
         file_url,
@@ -238,11 +208,6 @@ const uploadDocuments = async (req, res) => {
     const createdDocuments = await Document.findAll({
       where: { id: documents.map((doc) => doc.id) },
       include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
-        },
         {
           model: Admin,
           as: "uploadedBy",
@@ -281,17 +246,6 @@ const updateDocument = async (req, res) => {
       });
     }
 
-    // Verify project exists if being updated
-    if (updateData.project_id) {
-      const project = await Project.findByPk(updateData.project_id);
-      if (!project) {
-        return res.status(400).json({
-          success: false,
-          message: "Project not found",
-        });
-      }
-    }
-
     // Verify admin exists if being updated
     if (updateData.uploaded_by_admin_id) {
       const admin = await Admin.findByPk(updateData.uploaded_by_admin_id);
@@ -308,11 +262,6 @@ const updateDocument = async (req, res) => {
     // Fetch updated document with associations
     const updatedDocument = await Document.findByPk(id, {
       include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
-        },
         {
           model: Admin,
           as: "uploadedBy",
@@ -365,13 +314,13 @@ const deleteDocument = async (req, res) => {
   }
 };
 
-// Get documents by project
-const getDocumentsByProject = async (req, res) => {
+// Get documents by type
+const getDocumentsByType = async (req, res) => {
   try {
-    const { project_id } = req.params;
+    const { document_type } = req.params;
 
     const documents = await Document.findAll({
-      where: { project_id },
+      where: { document_type },
       include: [
         {
           model: Admin,
@@ -388,10 +337,42 @@ const getDocumentsByProject = async (req, res) => {
       count: documents.length,
     });
   } catch (error) {
-    console.error("Error fetching documents by project:", error);
+    console.error("Error fetching documents by type:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching documents by project",
+      message: "Error fetching documents by type",
+      error: error.message,
+    });
+  }
+};
+
+// Get documents by category
+const getDocumentsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+
+    const documents = await Document.findAll({
+      where: { category },
+      include: [
+        {
+          model: Admin,
+          as: "uploadedBy",
+          attributes: ["id", "name", "email", "role"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json({
+      success: true,
+      data: documents,
+      count: documents.length,
+    });
+  } catch (error) {
+    console.error("Error fetching documents by category:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching documents by category",
       error: error.message,
     });
   }
@@ -405,11 +386,6 @@ const getDocumentsByFileType = async (req, res) => {
     const documents = await Document.findAll({
       where: { file_type },
       include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
-        },
         {
           model: Admin,
           as: "uploadedBy",
@@ -441,13 +417,6 @@ const getDocumentsByUploader = async (req, res) => {
 
     const documents = await Document.findAll({
       where: { uploaded_by_admin_id: admin_id },
-      include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "name", "status"],
-        },
-      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -469,11 +438,15 @@ const getDocumentsByUploader = async (req, res) => {
 // Get document statistics
 const getDocumentStatistics = async (req, res) => {
   try {
-    const { project_id } = req.params;
+    const { document_type, category } = req.query;
+
+    let whereClause = {};
+    if (document_type) whereClause.document_type = document_type;
+    if (category) whereClause.category = category;
 
     const documents = await Document.findAll({
-      where: project_id ? { project_id } : {},
-      attributes: ["file_type", "createdAt"],
+      where: whereClause,
+      attributes: ["file_type", "document_type", "category", "createdAt"],
     });
 
     // Group by file type
@@ -483,6 +456,26 @@ const getDocumentStatistics = async (req, res) => {
         acc[type] = 0;
       }
       acc[type]++;
+      return acc;
+    }, {});
+
+    // Group by document type
+    const documentTypeStats = documents.reduce((acc, doc) => {
+      const type = doc.document_type;
+      if (!acc[type]) {
+        acc[type] = 0;
+      }
+      acc[type]++;
+      return acc;
+    }, {});
+
+    // Group by category
+    const categoryStats = documents.reduce((acc, doc) => {
+      const category = doc.category || "Uncategorized";
+      if (!acc[category]) {
+        acc[category] = 0;
+      }
+      acc[category]++;
       return acc;
     }, {});
 
@@ -499,9 +492,15 @@ const getDocumentStatistics = async (req, res) => {
     const stats = {
       total_documents: documents.length,
       file_type_breakdown: fileTypeStats,
+      document_type_breakdown: documentTypeStats,
+      category_breakdown: categoryStats,
       monthly_uploads: monthlyStats,
-      most_common_type: Object.keys(fileTypeStats).reduce(
+      most_common_file_type: Object.keys(fileTypeStats).reduce(
         (a, b) => (fileTypeStats[a] > fileTypeStats[b] ? a : b),
+        null
+      ),
+      most_common_document_type: Object.keys(documentTypeStats).reduce(
+        (a, b) => (documentTypeStats[a] > documentTypeStats[b] ? a : b),
         null
       ),
     };
@@ -527,7 +526,8 @@ module.exports = {
   uploadDocuments,
   updateDocument,
   deleteDocument,
-  getDocumentsByProject,
+  getDocumentsByType,
+  getDocumentsByCategory,
   getDocumentsByFileType,
   getDocumentsByUploader,
   getDocumentStatistics,

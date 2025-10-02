@@ -47,7 +47,7 @@ const initializeModels = async () => {
     await Labor.sync({ force: false, alter: false });
     await Budget.sync({ force: false, alter: false });
     await Document.sync({ force: false, alter: false });
-    await ProgressUpdate.sync({ force: false, alter: false });
+    await ProgressUpdate.sync({ force: true, alter: false });
     await Issue.sync({ force: false, alter: false });
     await Notification.sync({ force: false, alter: false });
 
@@ -164,15 +164,7 @@ const setupAssociations = () => {
       as: "budgets",
     });
 
-    // Document associations
-    models.Document.belongsTo(models.Project, {
-      foreignKey: "project_id",
-      as: "project",
-    });
-    models.Project.hasMany(models.Document, {
-      foreignKey: "project_id",
-      as: "documents",
-    });
+    // Document associations (no project relationship - documents are independent)
     models.Document.belongsTo(models.Admin, {
       foreignKey: "uploaded_by_admin_id",
       as: "uploadedBy",
@@ -183,12 +175,12 @@ const setupAssociations = () => {
     });
 
     // ProgressUpdate associations
-    models.ProgressUpdate.belongsTo(models.Project, {
-      foreignKey: "project_id",
-      as: "project",
+    models.ProgressUpdate.belongsTo(models.Task, {
+      foreignKey: "task_id",
+      as: "task",
     });
-    models.Project.hasMany(models.ProgressUpdate, {
-      foreignKey: "project_id",
+    models.Task.hasMany(models.ProgressUpdate, {
+      foreignKey: "task_id",
       as: "progressUpdates",
     });
 

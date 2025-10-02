@@ -6,12 +6,14 @@ const {
   createProgressUpdate,
   updateProgressUpdate,
   deleteProgressUpdate,
-  getProgressUpdatesByProject,
+  getProgressUpdatesByTask,
   getLatestProgressUpdates,
   getProgressTimeline,
+  uploadProgressUpdateImages,
 } = require("../controllers/progressUpdateController");
 const { authenticateToken } = require("../middleware/auth");
 const { errorHandler } = require("../middleware/errorHandler");
+const { uploadProgressImages } = require("../middleware/upload");
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -19,11 +21,12 @@ router.use(authenticateToken);
 // Progress Update routes
 router.get("/", getAllProgressUpdates);
 router.get("/latest", getLatestProgressUpdates);
-router.get("/timeline/:project_id", getProgressTimeline);
-router.get("/project/:project_id", getProgressUpdatesByProject);
+router.get("/timeline/:task_id", getProgressTimeline);
+router.get("/task/:task_id", getProgressUpdatesByTask);
 router.get("/:id", getProgressUpdateById);
-router.post("/", createProgressUpdate);
-router.put("/:id", updateProgressUpdate);
+router.post("/", uploadProgressImages, createProgressUpdate);
+router.post("/upload-images", uploadProgressImages, uploadProgressUpdateImages);
+router.put("/:id", uploadProgressImages, updateProgressUpdate);
 router.delete("/:id", deleteProgressUpdate);
 
 // Error handling middleware

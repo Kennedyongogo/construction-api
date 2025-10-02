@@ -9,6 +9,8 @@ const {
   deleteAdmin,
   loginAdmin,
   getDashboardStats,
+  getProjectsByDate,
+  getTasksByDate,
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/auth");
 const { errorHandler } = require("../middleware/errorHandler");
@@ -35,6 +37,8 @@ router.post("/", uploadProfilePicture, handleUploadError, createAdmin); // Allow
 
 // Protected routes (require authentication)
 router.get("/dashboard/stats", authenticateToken, getDashboardStats);
+router.get("/projects/by-date", authenticateToken, getProjectsByDate);
+router.get("/tasks/by-date", authenticateToken, getTasksByDate);
 router.get("/", authenticateToken, getAllAdmins);
 router.get("/:id", authenticateToken, getAdminById);
 router.put(

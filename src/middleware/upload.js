@@ -11,6 +11,17 @@ const storage = multer.diskStorage({
       uploadPath = path.join(__dirname, "..", "..", "uploads", "projects");
     } else if (file.fieldname === "profile_picture") {
       uploadPath = path.join(__dirname, "..", "..", "uploads", "documents");
+    } else if (
+      file.fieldname === "progress_images" ||
+      file.fieldname === "images"
+    ) {
+      uploadPath = path.join(
+        __dirname,
+        "..",
+        "..",
+        "uploads",
+        "progress-updates"
+      );
     } else {
       uploadPath = path.join(__dirname, "..", "..", "uploads", "documents");
     }
@@ -87,6 +98,9 @@ const uploadDocuments = upload.array("documents", 10); // Max 10 files
 // Middleware for single profile picture upload
 const uploadProfilePicture = upload.single("profile_picture");
 
+// Middleware for progress update images upload
+const uploadProgressImages = upload.array("progress_images", 10); // Max 10 progress images
+
 // Error handling middleware for multer
 const handleUploadError = (error, req, res, next) => {
   if (error instanceof multer.MulterError) {
@@ -119,5 +133,6 @@ module.exports = {
   uploadBlueprints,
   uploadDocuments,
   uploadProfilePicture,
+  uploadProgressImages,
   handleUploadError,
 };

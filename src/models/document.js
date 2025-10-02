@@ -9,13 +9,28 @@ module.exports = (sequelize) => {
         primaryKey: true,
         defaultValue: DataTypes.UUIDV4,
       },
-      project_id: {
-        type: DataTypes.UUID,
+      document_type: {
+        type: DataTypes.ENUM(
+          "project_document",
+          "company_document",
+          "template",
+          "policy",
+          "contract",
+          "other"
+        ),
         allowNull: false,
-        references: {
-          model: "projects",
-          key: "id",
-        },
+        defaultValue: "company_document",
+      },
+      category: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment:
+          "Document category for organization (e.g., 'HR', 'Finance', 'Legal')",
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: "Document description or notes",
       },
       file_name: {
         type: DataTypes.STRING,
