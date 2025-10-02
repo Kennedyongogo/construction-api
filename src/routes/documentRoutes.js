@@ -16,7 +16,7 @@ const {
 const { authenticateToken } = require("../middleware/auth");
 const { errorHandler } = require("../middleware/errorHandler");
 const {
-  uploadDocuments: uploadMiddleware,
+  uploadGeneralDocuments: uploadMiddleware,
   handleUploadError,
 } = require("../middleware/upload");
 

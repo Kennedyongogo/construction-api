@@ -25,7 +25,11 @@ router.get("/timeline/:task_id", getProgressTimeline);
 router.get("/task/:task_id", getProgressUpdatesByTask);
 router.get("/:id", getProgressUpdateById);
 router.post("/", uploadProgressImages, createProgressUpdate);
-router.post("/upload-images", uploadProgressImages, uploadProgressUpdateImages);
+router.post(
+  "/:id/upload-images",
+  uploadProgressImages,
+  uploadProgressUpdateImages
+);
 router.put("/:id", uploadProgressImages, updateProgressUpdate);
 router.delete("/:id", deleteProgressUpdate);
 

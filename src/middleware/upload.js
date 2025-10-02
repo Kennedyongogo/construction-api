@@ -17,6 +17,8 @@ const storage = multer.diskStorage({
         "uploads",
         "projectdocuments"
       );
+    } else if (file.fieldname === "general_documents") {
+      uploadPath = path.join(__dirname, "..", "..", "uploads", "documents");
     } else if (file.fieldname === "profile_picture") {
       uploadPath = path.join(__dirname, "..", "..", "uploads", "documents");
     } else if (
@@ -106,6 +108,9 @@ const uploadBlueprints = upload.fields([
 // Middleware for multiple file upload (documents)
 const uploadDocuments = upload.array("documents", 10); // Max 10 files
 
+// Middleware for general document uploads (goes to documents folder)
+const uploadGeneralDocuments = upload.array("general_documents", 10); // Max 10 files
+
 // Middleware for single profile picture upload
 const uploadProfilePicture = upload.single("profile_picture");
 
@@ -143,6 +148,7 @@ module.exports = {
   uploadBlueprint,
   uploadBlueprints,
   uploadDocuments,
+  uploadGeneralDocuments,
   uploadProfilePicture,
   uploadProgressImages,
   handleUploadError,

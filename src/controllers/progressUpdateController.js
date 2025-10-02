@@ -482,6 +482,8 @@ const getProgressTimeline = async (req, res) => {
 // Upload progress update images
 const uploadProgressUpdateImages = async (req, res) => {
   try {
+    const { id } = req.params;
+
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
@@ -489,16 +491,37 @@ const uploadProgressUpdateImages = async (req, res) => {
       });
     }
 
-    const imageUrls = req.files.map(
+    // Find the existing progress update
+    const progressUpdate = await ProgressUpdate.findByPk(id);
+    if (!progressUpdate) {
+      return res.status(404).json({
+        success: false,
+        message: "Progress update not found",
+      });
+    }
+
+    // Generate image URLs
+    const newImageUrls = req.files.map(
       (file) => `/uploads/progress-updates/${file.filename}`
     );
 
+    // Get existing images and add new ones
+    const existingImages = progressUpdate.images || [];
+    const updatedImages = [...existingImages, ...newImageUrls];
+
+    // Update the progress update with new images
+    await progressUpdate.update({
+      images: updatedImages,
+    });
+
     res.status(200).json({
       success: true,
-      message: "Images uploaded successfully",
+      message: `${newImageUrls.length} image(s) added to progress update successfully`,
       data: {
-        images: imageUrls,
-        count: imageUrls.length,
+        progressUpdateId: id,
+        newImages: newImageUrls,
+        totalImages: updatedImages.length,
+        allImages: updatedImages,
       },
     });
   } catch (error) {
