@@ -40,7 +40,7 @@ module.exports = (sequelize) => {
       },
     },
     {
-      tableName: "progress_updates",
+      tableName: "task_progress_updates",
       timestamps: true,
     }
   );

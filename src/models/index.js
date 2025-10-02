@@ -47,7 +47,7 @@ const initializeModels = async () => {
     await Labor.sync({ force: false, alter: false });
     await Budget.sync({ force: false, alter: false });
     await Document.sync({ force: false, alter: false });
-    await ProgressUpdate.sync({ force: true, alter: false });
+    await ProgressUpdate.sync({ force: false, alter: false });
     await Issue.sync({ force: false, alter: false });
     await Notification.sync({ force: false, alter: false });
 
