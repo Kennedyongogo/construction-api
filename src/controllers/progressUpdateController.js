@@ -25,7 +25,7 @@ const getAllProgressUpdates = async (req, res) => {
         {
           model: Task,
           as: "task",
-          attributes: ["id", "title", "status", "progress_percent"],
+          attributes: ["id", "name", "status", "progress_percent"],
           include: [
             {
               model: Project,
@@ -62,6 +62,7 @@ const getAllProgressUpdates = async (req, res) => {
 const getProgressUpdateById = async (req, res) => {
   try {
     const { id } = req.params;
+
     const progressUpdate = await ProgressUpdate.findByPk(id, {
       include: [
         {
@@ -69,11 +70,11 @@ const getProgressUpdateById = async (req, res) => {
           as: "task",
           attributes: [
             "id",
-            "title",
+            "name",
             "status",
             "progress_percent",
             "start_date",
-            "end_date",
+            "due_date",
           ],
           include: [
             {
@@ -110,19 +111,36 @@ const getProgressUpdateById = async (req, res) => {
 // Create new progress update
 const createProgressUpdate = async (req, res) => {
   try {
+    console.log("🚀 Creating progress update...");
+    console.log("📋 Request body:", req.body);
+    console.log("📁 Files received:", req.files?.length || 0);
+    console.log(
+      "📁 Files details:",
+      req.files?.map((f) => ({
+        name: f.filename,
+        fieldname: f.fieldname,
+        mimetype: f.mimetype,
+      })) || []
+    );
+
     const { task_id, description, progress_percent, images, date } = req.body;
 
     // Verify task exists
+    console.log("🔍 Looking for task with ID:", task_id);
     const task = await Task.findByPk(task_id);
     if (!task) {
+      console.log("❌ Task not found with ID:", task_id);
       return res.status(400).json({
         success: false,
         message: "Task not found",
       });
     }
+    console.log("✅ Task found:", task.name);
 
     // Validate progress percentage
+    console.log("📊 Progress percentage:", progress_percent);
     if (progress_percent < 0 || progress_percent > 100) {
+      console.log("❌ Invalid progress percentage:", progress_percent);
       return res.status(400).json({
         success: false,
         message: "Progress percentage must be between 0 and 100",
@@ -131,13 +149,27 @@ const createProgressUpdate = async (req, res) => {
 
     // Handle image uploads if files are provided
     let imageUrls = [];
+    console.log("🖼️ Processing images...");
     if (req.files && req.files.length > 0) {
+      console.log("📁 Files found, processing...");
       imageUrls = req.files.map(
         (file) => `/uploads/progress-updates/${file.filename}`
       );
+      console.log("✅ Image URLs generated:", imageUrls);
     } else if (images && Array.isArray(images)) {
+      console.log("📋 Images from body:", images);
       imageUrls = images;
+    } else {
+      console.log("ℹ️ No images provided");
     }
+
+    console.log("💾 Creating progress update with data:", {
+      task_id,
+      description,
+      progress_percent,
+      images: imageUrls,
+      date: date || new Date(),
+    });
 
     const progressUpdate = await ProgressUpdate.create({
       task_id,
@@ -147,8 +179,16 @@ const createProgressUpdate = async (req, res) => {
       date: date || new Date(),
     });
 
+    console.log("✅ Progress update created with ID:", progressUpdate.id);
+
     // Update task progress if this is the latest update
     if (progress_percent > task.progress_percent) {
+      console.log(
+        "📈 Updating task progress from",
+        task.progress_percent,
+        "to",
+        progress_percent
+      );
       await task.update({ progress_percent });
     }
 
@@ -160,7 +200,7 @@ const createProgressUpdate = async (req, res) => {
           {
             model: Task,
             as: "task",
-            attributes: ["id", "title", "status"],
+            attributes: ["id", "name", "status"],
             include: [
               {
                 model: Project,
@@ -173,13 +213,16 @@ const createProgressUpdate = async (req, res) => {
       }
     );
 
+    console.log("🎉 Progress update creation completed successfully!");
+
     res.status(201).json({
       success: true,
       message: "Progress update created successfully",
       data: createdProgressUpdate,
     });
   } catch (error) {
-    console.error("Error creating progress update:", error);
+    console.error("❌ Error creating progress update:", error);
+    console.error("❌ Error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: "Error creating progress update",
@@ -250,7 +293,7 @@ const updateProgressUpdate = async (req, res) => {
         {
           model: Task,
           as: "task",
-          attributes: ["id", "title", "status"],
+          attributes: ["id", "name", "status"],
           include: [
             {
               model: Project,
@@ -318,7 +361,7 @@ const getProgressUpdatesByTask = async (req, res) => {
         {
           model: Task,
           as: "task",
-          attributes: ["id", "title", "status"],
+          attributes: ["id", "name", "status"],
           include: [
             {
               model: Project,
@@ -359,7 +402,7 @@ const getLatestProgressUpdates = async (req, res) => {
         {
           model: Task,
           as: "task",
-          attributes: ["id", "title", "status", "progress_percent"],
+          attributes: ["id", "name", "status", "progress_percent"],
           include: [
             {
               model: Project,

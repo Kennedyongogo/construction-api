@@ -264,8 +264,11 @@ const createTask = async (req, res) => {
 // Update task
 const updateTask = async (req, res) => {
   try {
+    console.log("🚀 Updating task...");
     const { id } = req.params;
     const updateData = req.body;
+    console.log("📋 Task ID:", id);
+    console.log("📋 Update data:", updateData);
 
     const task = await Task.findByPk(id);
     if (!task) {
@@ -281,15 +284,44 @@ const updateTask = async (req, res) => {
       task.status === "pending" &&
       updateData.status !== "pending";
 
+    // Check if status is changing from in_progress to completed
+    const statusChangingFromInProgress =
+      updateData.status &&
+      task.status === "in_progress" &&
+      updateData.status === "completed";
+
     // Check if progress is changing from 0
     const progressChangingFromZero =
       updateData.progress_percent !== undefined &&
       task.progress_percent === 0 &&
       updateData.progress_percent > 0;
 
-    // If either condition is true, require progress update
-    if (statusChangingFromPending || progressChangingFromZero) {
-      if (!updateData.progress_update) {
+    // If any condition is true, require progress update
+    console.log("🔍 Checking progress update requirements:");
+    console.log("📊 Status changing from pending:", statusChangingFromPending);
+    console.log(
+      "📊 Status changing from in_progress:",
+      statusChangingFromInProgress
+    );
+    console.log("📊 Progress changing from zero:", progressChangingFromZero);
+
+    if (
+      statusChangingFromPending ||
+      statusChangingFromInProgress ||
+      progressChangingFromZero
+    ) {
+      console.log("⚠️ Progress update required!");
+      console.log("📋 Has progress_update:", !!updateData.progress_update);
+      console.log(
+        "📋 progress_update_already_created:",
+        updateData.progress_update_already_created
+      );
+
+      if (
+        !updateData.progress_update &&
+        !updateData.progress_update_already_created
+      ) {
+        console.log("❌ Missing required progress update data");
         return res.status(400).json({
           success: false,
           message:
@@ -301,35 +333,38 @@ const updateTask = async (req, res) => {
           new_progress: updateData.progress_percent,
         });
       }
+      console.log("✅ Progress update validation passed");
 
       // Validate progress update data
-      if (
-        !updateData.progress_update.description ||
-        updateData.progress_update.progress_percent === undefined ||
-        !updateData.progress_update.date
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Progress update must include description, progress_percent, and date",
-          missing_fields: {
-            description: !updateData.progress_update.description,
-            progress_percent:
-              updateData.progress_update.progress_percent === undefined,
-            date: !updateData.progress_update.date,
-          },
-        });
-      }
+      if (updateData.progress_update) {
+        if (
+          !updateData.progress_update.description ||
+          updateData.progress_update.progress_percent === undefined ||
+          !updateData.progress_update.date
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Progress update must include description, progress_percent, and date",
+            missing_fields: {
+              description: !updateData.progress_update.description,
+              progress_percent:
+                updateData.progress_update.progress_percent === undefined,
+              date: !updateData.progress_update.date,
+            },
+          });
+        }
 
-      // Validate progress percentage
-      if (
-        updateData.progress_update.progress_percent < 0 ||
-        updateData.progress_update.progress_percent > 100
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Progress percentage must be between 0 and 100",
-        });
+        // Validate progress percentage
+        if (
+          updateData.progress_update.progress_percent < 0 ||
+          updateData.progress_update.progress_percent > 100
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "Progress percentage must be between 0 and 100",
+          });
+        }
       }
     }
 
@@ -358,8 +393,11 @@ const updateTask = async (req, res) => {
     // Update the task
     await task.update(updateData);
 
-    // If progress update was provided, create it
-    if (updateData.progress_update) {
+    // If progress update was provided, create it (only if it doesn't already exist)
+    if (
+      updateData.progress_update &&
+      !updateData.progress_update_already_created
+    ) {
       const progressUpdateData = {
         task_id: id,
         description: updateData.progress_update.description,
@@ -387,13 +425,16 @@ const updateTask = async (req, res) => {
       ],
     });
 
+    console.log("🎉 Task update completed successfully!");
+
     res.status(200).json({
       success: true,
       message: "Task updated successfully",
       data: updatedTask,
     });
   } catch (error) {
-    console.error("Error updating task:", error);
+    console.error("❌ Error updating task:", error);
+    console.error("❌ Error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: "Error updating task",
@@ -406,7 +447,12 @@ const updateTask = async (req, res) => {
 const updateTaskStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, progress_percent, progress_update } = req.body;
+    const {
+      status,
+      progress_percent,
+      progress_update,
+      progress_update_already_created,
+    } = req.body;
 
     const validStatuses = ["pending", "in_progress", "completed"];
     if (status && !validStatuses.includes(status)) {
@@ -438,15 +484,23 @@ const updateTaskStatus = async (req, res) => {
     const statusChangingFromPending =
       status && task.status === "pending" && status !== "pending";
 
+    // Check if status is changing from in_progress to completed
+    const statusChangingFromInProgress =
+      status && task.status === "in_progress" && status === "completed";
+
     // Check if progress is changing from 0
     const progressChangingFromZero =
       progress_percent !== undefined &&
       task.progress_percent === 0 &&
       progress_percent > 0;
 
-    // If either condition is true, require progress update
-    if (statusChangingFromPending || progressChangingFromZero) {
-      if (!progress_update) {
+    // If any condition is true, require progress update
+    if (
+      statusChangingFromPending ||
+      statusChangingFromInProgress ||
+      progressChangingFromZero
+    ) {
+      if (!progress_update && !progress_update_already_created) {
         return res.status(400).json({
           success: false,
           message:
@@ -492,8 +546,8 @@ const updateTaskStatus = async (req, res) => {
     // Update the task
     await task.update({ status, progress_percent });
 
-    // If progress update was provided, create it
-    if (progress_update) {
+    // If progress update was provided, create it (only if it doesn't already exist)
+    if (progress_update && !progress_update_already_created) {
       const progressUpdateData = {
         task_id: id,
         description: progress_update.description,
@@ -533,11 +587,33 @@ const deleteTask = async (req, res) => {
       });
     }
 
+    // First delete all associated records
+    await ProgressUpdate.destroy({
+      where: { task_id: id },
+    });
+
+    await Material.destroy({
+      where: { task_id: id },
+    });
+
+    await Equipment.destroy({
+      where: { assigned_task_id: id },
+    });
+
+    await Labor.destroy({
+      where: { task_id: id },
+    });
+
+    await Budget.destroy({
+      where: { task_id: id },
+    });
+
+    // Then delete the task
     await task.destroy();
 
     res.status(200).json({
       success: true,
-      message: "Task deleted successfully",
+      message: "Task and all associated records deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting task:", error);

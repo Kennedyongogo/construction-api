@@ -1,11 +1,19 @@
 const { Document, Admin } = require("../models");
+const { Op } = require("sequelize");
 const path = require("path");
 
 // Get all documents
 const getAllDocuments = async (req, res) => {
   try {
-    const { document_type, category, file_type, uploaded_by, page, limit } =
-      req.query;
+    const {
+      document_type,
+      category,
+      file_type,
+      uploaded_by,
+      page,
+      limit,
+      exclude_types,
+    } = req.query;
 
     let whereClause = {};
     if (document_type) {
@@ -19,6 +27,16 @@ const getAllDocuments = async (req, res) => {
     }
     if (uploaded_by) {
       whereClause.uploaded_by_admin_id = uploaded_by;
+    }
+
+    // Handle exclude_types parameter
+    if (exclude_types) {
+      const excludeList = Array.isArray(exclude_types)
+        ? exclude_types
+        : [exclude_types];
+      whereClause.document_type = {
+        [Op.notIn]: excludeList,
+      };
     }
 
     // Parse pagination parameters
