@@ -19,6 +19,7 @@ const documentRoutes = require("./routes/documentRoutes");
 const progressUpdateRoutes = require("./routes/progressUpdateRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const quotationRoutes = require("./routes/quotationRoutes");
 
 const app = express();
 
@@ -52,11 +53,13 @@ const progressUpdatesUploadPath = path.join(
   "uploads",
   "progress-updates"
 );
+const logosPath = path.join(__dirname, "..", "public", "logos");
 
 console.log("📁 Projects upload path:", projectsUploadPath);
 console.log("📁 Documents upload path:", documentsUploadPath);
 console.log("📁 Project Documents upload path:", projectDocumentsUploadPath);
 console.log("📁 Progress Updates upload path:", progressUpdatesUploadPath);
+console.log("📁 Logos path:", logosPath);
 console.log("📁 Projects directory exists:", fs.existsSync(projectsUploadPath));
 console.log(
   "📁 Documents directory exists:",
@@ -78,6 +81,7 @@ app.use(
   express.static(projectDocumentsUploadPath)
 );
 app.use("/uploads/progress-updates", express.static(progressUpdatesUploadPath));
+app.use("/logos", express.static(logosPath));
 
 // API routes
 console.log("🔗 Registering API routes...");
@@ -94,6 +98,7 @@ app.use("/api/documents", documentRoutes);
 app.use("/api/progress-updates", progressUpdateRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/quotations", quotationRoutes);
 console.log("✅ All API routes registered");
 
 // Error handling middleware
@@ -105,6 +110,7 @@ const createUploadDirectories = () => {
     path.join(__dirname, "..", "uploads"),
     path.join(__dirname, "..", "uploads", "projects"),
     path.join(__dirname, "..", "uploads", "documents"),
+    path.join(__dirname, "..", "public", "logos"),
   ];
 
   uploadDirs.forEach((dir) => {
