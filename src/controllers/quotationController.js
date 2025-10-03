@@ -14,10 +14,14 @@ const fs = require("fs");
 // Generate project quotation PDF
 const generateProjectQuotation = async (req, res) => {
   try {
+    console.log("🚀 Starting PDF generation...");
     const { projectId } = req.params;
     const { quotationType = "both" } = req.query;
+    console.log("📋 Project ID:", projectId);
+    console.log("📋 Quotation Type:", quotationType);
 
     // Fetch project with all related data
+    console.log("🔍 Fetching project data...");
     const project = await Project.findByPk(projectId, {
       include: [
         {
@@ -56,31 +60,45 @@ const generateProjectQuotation = async (req, res) => {
     });
 
     if (!project) {
+      console.log("❌ Project not found");
       return res.status(404).json({
         success: false,
         message: "Project not found",
       });
     }
+    console.log("✅ Project found:", project.name);
 
     // Calculate budget summaries
+    console.log("📊 Calculating budget summary...");
     const budgetSummary = calculateBudgetSummary(project.tasks, quotationType);
+    console.log("✅ Budget summary calculated");
 
     // Generate HTML content for PDF
+    console.log("📝 Generating HTML content...");
     const htmlContent = generateQuotationHTML(
       project,
       budgetSummary,
       quotationType
     );
+    console.log("✅ HTML content generated, length:", htmlContent.length);
 
     // Generate PDF using Puppeteer
+    console.log("🌐 Launching Puppeteer browser...");
     const browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
+    console.log("✅ Browser launched successfully");
 
+    console.log("📄 Creating new page...");
     const page = await browser.newPage();
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    console.log("✅ Page created");
 
+    console.log("📝 Setting page content...");
+    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    console.log("✅ Page content set");
+
+    console.log("📄 Generating PDF...");
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -91,10 +109,14 @@ const generateProjectQuotation = async (req, res) => {
         left: "15mm",
       },
     });
+    console.log("✅ PDF generated, buffer size:", pdfBuffer.length);
 
+    console.log("🔒 Closing browser...");
     await browser.close();
+    console.log("✅ Browser closed");
 
     // Set response headers for PDF download
+    console.log("📤 Setting response headers...");
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
@@ -103,10 +125,17 @@ const generateProjectQuotation = async (req, res) => {
       }.pdf"`
     );
     res.setHeader("Content-Length", pdfBuffer.length);
+    console.log("✅ Headers set");
 
+    console.log("📤 Sending PDF response...");
     res.send(pdfBuffer);
+    console.log("✅ PDF sent successfully!");
   } catch (error) {
-    console.error("Error generating quotation:", error);
+    console.error("❌ Error generating quotation:", error);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Error name:", error.name);
+    console.error("❌ Error message:", error.message);
+
     res.status(500).json({
       success: false,
       message: "Error generating quotation PDF",
@@ -310,15 +339,20 @@ const generateQuotationHTML = (
   let logoBase64 = "";
 
   try {
+    console.log("🖼️ Looking for logo at:", logoPath);
     if (fs.existsSync(logoPath)) {
+      console.log("✅ Logo file found");
       const logoBuffer = fs.readFileSync(logoPath);
       logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-      console.log("Logo loaded successfully as base64");
+      console.log(
+        "✅ Logo loaded successfully as base64, length:",
+        logoBase64.length
+      );
     } else {
-      console.log("Logo file not found at:", logoPath);
+      console.log("❌ Logo file not found at:", logoPath);
     }
   } catch (error) {
-    console.error("Error loading logo:", error);
+    console.error("❌ Error loading logo:", error);
   }
 
   return `
