@@ -1109,7 +1109,7 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-// Get projects by date range for bar charts
+// Get projects by start date range for bar charts
 const getProjectsByDate = async (req, res) => {
   try {
     const { startDate, endDate, groupBy = "day" } = req.query;
@@ -1146,12 +1146,12 @@ const getProjectsByDate = async (req, res) => {
     const results = await sequelize.query(
       `
       SELECT 
-        TO_CHAR("createdAt", :dateFormat) as date,
+        TO_CHAR("start_date", :dateFormat) as date,
         COUNT(*) as count,
         status
       FROM projects 
-      WHERE "createdAt" BETWEEN :startDate AND :endDate
-      GROUP BY TO_CHAR("createdAt", :dateFormat), status
+      WHERE "start_date" >= :startDate::date AND "start_date" <= :endDate::date
+      GROUP BY TO_CHAR("start_date", :dateFormat), status
       ORDER BY date ASC, status ASC
     `,
       {
@@ -1164,7 +1164,8 @@ const getProjectsByDate = async (req, res) => {
       }
     );
 
-    console.log("Raw query results:", results);
+    console.log("Raw query results (filtered by start_date):", results);
+    console.log("Date range filter:", { startDate, endDate, dateFormat });
 
     // Group results by date
     const groupedData = {};
@@ -1244,7 +1245,7 @@ const getTasksByDate = async (req, res) => {
         COUNT(*) as count,
         status
       FROM tasks 
-      WHERE "createdAt" BETWEEN :startDate AND :endDate
+      WHERE "createdAt" >= :startDate::date AND "createdAt" <= :endDate::date
       GROUP BY TO_CHAR("createdAt", :dateFormat), status
       ORDER BY date ASC, status ASC
     `,
