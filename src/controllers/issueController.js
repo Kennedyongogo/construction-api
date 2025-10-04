@@ -1,9 +1,66 @@
-const { Issue, Project, User } = require("../models");
+const { Issue, Project } = require("../models");
+const { Op } = require("sequelize");
+
+// Get available issue categories
+const getIssueCategories = async (req, res) => {
+  try {
+    const categories = [
+      {
+        value: "general_inquiry",
+        label: "General Inquiry",
+        description: "General questions about services or information",
+      },
+      {
+        value: "project_inquiry",
+        label: "Project Inquiry",
+        description: "Questions about specific projects",
+      },
+      {
+        value: "technical_support",
+        label: "Technical Support",
+        description: "Technical issues or problems",
+      },
+      {
+        value: "billing_question",
+        label: "Billing Question",
+        description: "Questions about payments or billing",
+      },
+      {
+        value: "complaint",
+        label: "Complaint",
+        description: "Formal complaints or concerns",
+      },
+      {
+        value: "suggestion",
+        label: "Suggestion",
+        description: "Suggestions for improvement",
+      },
+      {
+        value: "other",
+        label: "Other",
+        description: "Other types of issues",
+      },
+    ];
+
+    res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Error fetching issue categories:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching issue categories",
+      error: error.message,
+    });
+  }
+};
 
 // Get all issues
 const getAllIssues = async (req, res) => {
   try {
-    const { project_id, status, submitted_by, page, limit } = req.query;
+    const { project_id, status, category, email, name, page, limit } =
+      req.query;
 
     let whereClause = {};
     if (project_id) {
@@ -12,8 +69,14 @@ const getAllIssues = async (req, res) => {
     if (status) {
       whereClause.status = status;
     }
-    if (submitted_by) {
-      whereClause.submitted_by_user_id = submitted_by;
+    if (category) {
+      whereClause.category = category;
+    }
+    if (email) {
+      whereClause.email = email;
+    }
+    if (name) {
+      whereClause.name = { [Op.like]: `%${name}%` };
     }
 
     // Parse pagination parameters
@@ -32,14 +95,10 @@ const getAllIssues = async (req, res) => {
           model: Project,
           as: "project",
           attributes: ["id", "name", "status", "progress_percent"],
-        },
-        {
-          model: User,
-          as: "submittedBy",
-          attributes: ["id", "name", "type", "email"],
+          required: false, // Make project association optional
         },
       ],
-      order: [["date_reported", "DESC"]],
+      order: [["createdAt", "DESC"]],
       limit: limitNum,
       offset: offset,
     });
@@ -79,11 +138,7 @@ const getIssueById = async (req, res) => {
             "start_date",
             "end_date",
           ],
-        },
-        {
-          model: User,
-          as: "submittedBy",
-          attributes: ["id", "name", "type", "email", "phone"],
+          required: false, // Make project association optional
         },
       ],
     });
@@ -112,40 +167,26 @@ const getIssueById = async (req, res) => {
 // Create new issue
 const createIssue = async (req, res) => {
   try {
-    const {
-      project_id,
-      submitted_by_user_id,
-      description,
-      status,
-      date_reported,
-    } = req.body;
+    const { project_id, name, email, description, category, status } = req.body;
 
-    // Verify project exists
-    const project = await Project.findByPk(project_id);
-    if (!project) {
-      return res.status(400).json({
-        success: false,
-        message: "Project not found",
-      });
-    }
-
-    // Verify user exists if provided
-    if (submitted_by_user_id) {
-      const user = await User.findByPk(submitted_by_user_id);
-      if (!user) {
+    // Verify project exists only if project_id is provided
+    if (project_id) {
+      const project = await Project.findByPk(project_id);
+      if (!project) {
         return res.status(400).json({
           success: false,
-          message: "User not found",
+          message: "Project not found",
         });
       }
     }
 
     const issue = await Issue.create({
-      project_id,
-      submitted_by_user_id,
+      project_id: project_id || null,
+      name,
+      email,
       description,
+      category: category || "general_inquiry",
       status: status || "open",
-      date_reported: date_reported || new Date(),
     });
 
     // Fetch the created issue with associations
@@ -155,11 +196,7 @@ const createIssue = async (req, res) => {
           model: Project,
           as: "project",
           attributes: ["id", "name", "status"],
-        },
-        {
-          model: User,
-          as: "submittedBy",
-          attributes: ["id", "name", "type"],
+          required: false, // Make project association optional
         },
       ],
     });
@@ -204,17 +241,6 @@ const updateIssue = async (req, res) => {
       }
     }
 
-    // Verify user exists if being updated
-    if (updateData.submitted_by_user_id) {
-      const user = await User.findByPk(updateData.submitted_by_user_id);
-      if (!user) {
-        return res.status(400).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-    }
-
     await issue.update(updateData);
 
     // Fetch updated issue with associations
@@ -224,11 +250,6 @@ const updateIssue = async (req, res) => {
           model: Project,
           as: "project",
           attributes: ["id", "name", "status"],
-        },
-        {
-          model: User,
-          as: "submittedBy",
-          attributes: ["id", "name", "type"],
         },
       ],
     });
@@ -323,14 +344,7 @@ const getIssuesByProject = async (req, res) => {
 
     const issues = await Issue.findAll({
       where: { project_id },
-      include: [
-        {
-          model: User,
-          as: "submittedBy",
-          attributes: ["id", "name", "type", "email"],
-        },
-      ],
-      order: [["date_reported", "DESC"]],
+      order: [["createdAt", "DESC"]],
     });
 
     res.status(200).json({
@@ -369,13 +383,8 @@ const getIssuesByStatus = async (req, res) => {
           as: "project",
           attributes: ["id", "name", "status"],
         },
-        {
-          model: User,
-          as: "submittedBy",
-          attributes: ["id", "name", "type"],
-        },
       ],
-      order: [["date_reported", "DESC"]],
+      order: [["createdAt", "DESC"]],
     });
 
     res.status(200).json({
@@ -393,13 +402,13 @@ const getIssuesByStatus = async (req, res) => {
   }
 };
 
-// Get issues by user
-const getIssuesByUser = async (req, res) => {
+// Get issues by email
+const getIssuesByEmail = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const { email } = req.params;
 
     const issues = await Issue.findAll({
-      where: { submitted_by_user_id: user_id },
+      where: { email },
       include: [
         {
           model: Project,
@@ -407,7 +416,7 @@ const getIssuesByUser = async (req, res) => {
           attributes: ["id", "name", "status"],
         },
       ],
-      order: [["date_reported", "DESC"]],
+      order: [["createdAt", "DESC"]],
     });
 
     res.status(200).json({
@@ -432,7 +441,7 @@ const getIssueStatistics = async (req, res) => {
 
     const issues = await Issue.findAll({
       where: project_id ? { project_id } : {},
-      attributes: ["status", "date_reported"],
+      attributes: ["status", "createdAt"],
     });
 
     // Group by status
@@ -447,7 +456,7 @@ const getIssueStatistics = async (req, res) => {
 
     // Group by month
     const monthlyStats = issues.reduce((acc, issue) => {
-      const month = new Date(issue.date_reported).toISOString().substring(0, 7);
+      const month = new Date(issue.createdAt).toISOString().substring(0, 7);
       if (!acc[month]) {
         acc[month] = 0;
       }
@@ -482,6 +491,7 @@ const getIssueStatistics = async (req, res) => {
 };
 
 module.exports = {
+  getIssueCategories,
   getAllIssues,
   getIssueById,
   createIssue,
@@ -490,6 +500,6 @@ module.exports = {
   deleteIssue,
   getIssuesByProject,
   getIssuesByStatus,
-  getIssuesByUser,
+  getIssuesByEmail,
   getIssueStatistics,
 };

@@ -48,7 +48,7 @@ const initializeModels = async () => {
     await Budget.sync({ force: false, alter: false });
     await Document.sync({ force: false, alter: false });
     await ProgressUpdate.sync({ force: false, alter: false });
-    await Issue.sync({ force: false, alter: false });
+    await Issue.sync({ force: false });
     await Notification.sync({ force: false, alter: false });
 
     console.log("✅ All models synced successfully");
@@ -192,14 +192,6 @@ const setupAssociations = () => {
     models.Project.hasMany(models.Issue, {
       foreignKey: "project_id",
       as: "issues",
-    });
-    models.Issue.belongsTo(models.User, {
-      foreignKey: "submitted_by_user_id",
-      as: "submittedBy",
-    });
-    models.User.hasMany(models.Issue, {
-      foreignKey: "submitted_by_user_id",
-      as: "submittedIssues",
     });
   } catch (error) {
     console.error("❌ Error during setupAssociations:", error);

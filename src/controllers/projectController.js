@@ -7,7 +7,9 @@ const {
   Labor,
   Budget,
   Issue,
+  ProgressUpdate,
 } = require("../models");
+const { Op } = require("sequelize");
 const path = require("path");
 
 // Get all projects
@@ -82,7 +84,15 @@ const getAllProjects = async (req, res) => {
         {
           model: Issue,
           as: "issues",
-          attributes: ["id", "description", "status", "date_reported"],
+          attributes: [
+            "id",
+            "name",
+            "email",
+            "description",
+            "category",
+            "status",
+            "createdAt",
+          ],
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -161,6 +171,19 @@ const getProjectById = async (req, res) => {
                 "rental_cost_per_day",
               ],
             },
+            {
+              model: ProgressUpdate,
+              as: "progressUpdates",
+              attributes: [
+                "id",
+                "description",
+                "progress_percent",
+                "date",
+                "images",
+                "createdAt",
+              ],
+              order: [["createdAt", "DESC"]],
+            },
           ],
         },
         {
@@ -168,17 +191,12 @@ const getProjectById = async (req, res) => {
           as: "issues",
           attributes: [
             "id",
+            "name",
+            "email",
             "description",
+            "category",
             "status",
-            "date_reported",
             "createdAt",
-          ],
-          include: [
-            {
-              model: require("../models").User,
-              as: "submittedBy",
-              attributes: ["id", "name", "type"],
-            },
           ],
         },
       ],
@@ -425,7 +443,15 @@ const updateProject = async (req, res) => {
         {
           model: Issue,
           as: "issues",
-          attributes: ["id", "description", "status", "date_reported"],
+          attributes: [
+            "id",
+            "name",
+            "email",
+            "description",
+            "category",
+            "status",
+            "createdAt",
+          ],
         },
       ],
     });
@@ -676,6 +702,278 @@ const getProjectsByStatus = async (req, res) => {
   }
 };
 
+// Get all projects (public endpoint - no authentication required)
+// Get public project by ID (no authentication required)
+const getPublicProjectById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const project = await Project.findByPk(id, {
+      include: [
+        {
+          model: Admin,
+          as: "engineer",
+          attributes: ["id", "name", "email", "role", "phone"],
+        },
+        {
+          model: Task,
+          as: "tasks",
+          attributes: [
+            "id",
+            "name",
+            "description",
+            "status",
+            "progress_percent",
+            "start_date",
+            "due_date",
+            "assigned_to_admin",
+          ],
+          include: [
+            {
+              model: Admin,
+              as: "assignedAdmin",
+              attributes: ["id", "name", "email"],
+            },
+            {
+              model: Material,
+              as: "materials",
+              attributes: [
+                "id",
+                "name",
+                "unit",
+                "unit_cost",
+                "quantity_required",
+                "quantity_used",
+              ],
+            },
+            {
+              model: Equipment,
+              as: "equipment",
+              attributes: [
+                "id",
+                "name",
+                "type",
+                "availability",
+                "rental_cost_per_day",
+              ],
+            },
+            {
+              model: ProgressUpdate,
+              as: "progressUpdates",
+              attributes: [
+                "id",
+                "description",
+                "progress_percent",
+                "date",
+                "images",
+                "createdAt",
+              ],
+              order: [["createdAt", "DESC"]],
+            },
+          ],
+        },
+        {
+          model: Issue,
+          as: "issues",
+          attributes: [
+            "id",
+            "name",
+            "email",
+            "description",
+            "category",
+            "status",
+            "createdAt",
+          ],
+        },
+      ],
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: project,
+    });
+  } catch (error) {
+    console.error("Error fetching public project:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching project",
+      error: error.message,
+    });
+  }
+};
+
+const getPublicProjects = async (req, res) => {
+  try {
+    const { status, page, limit } = req.query;
+
+    let whereClause = {};
+    if (status) {
+      whereClause.status = status;
+    }
+
+    // Parse pagination parameters
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const offset = (pageNum - 1) * limitNum;
+
+    // Get total count for pagination
+    const totalCount = await Project.count({ where: whereClause });
+
+    // Get paginated projects with limited data for public access
+    const projects = await Project.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Admin,
+          as: "engineer",
+          attributes: ["id", "name", "email", "role"],
+        },
+        {
+          model: Task,
+          as: "tasks",
+          attributes: ["id", "name", "status", "progress_percent", "due_date"],
+          include: [
+            {
+              model: Material,
+              as: "materials",
+              attributes: [
+                "id",
+                "name",
+                "unit",
+                "quantity_required",
+                "quantity_used",
+              ],
+            },
+            {
+              model: Equipment,
+              as: "equipment",
+              attributes: ["id", "name", "type", "availability"],
+            },
+            {
+              model: Labor,
+              as: "labor",
+              attributes: [
+                "id",
+                "worker_name",
+                "worker_type",
+                "total_cost",
+                "status",
+              ],
+            },
+            {
+              model: Budget,
+              as: "budgets",
+              attributes: ["id", "category", "amount", "type", "entry_type"],
+            },
+            {
+              model: ProgressUpdate,
+              as: "progressUpdates",
+              attributes: [
+                "id",
+                "description",
+                "progress_percent",
+                "date",
+                "images",
+                "createdAt",
+              ],
+              order: [["createdAt", "DESC"]],
+            },
+          ],
+        },
+        {
+          model: Issue,
+          as: "issues",
+          attributes: [
+            "id",
+            "name",
+            "email",
+            "description",
+            "category",
+            "status",
+            "createdAt",
+          ],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: limitNum,
+      offset: offset,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: projects,
+      count: totalCount,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(totalCount / limitNum),
+    });
+  } catch (error) {
+    console.error("Error fetching public projects:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching projects",
+      error: error.message,
+    });
+  }
+};
+
+// Search public projects with filtering
+const searchPublicProjects = async (req, res) => {
+  try {
+    const { search, limit = 10000 } = req.query;
+
+    let whereClause = {
+      status: ["planning", "in_progress", "completed"],
+    };
+
+    if (search && search.trim()) {
+      whereClause[Op.or] = [
+        { name: { [Op.like]: `%${search.trim()}%` } },
+        { description: { [Op.like]: `%${search.trim()}%` } },
+        { location: { [Op.like]: `%${search.trim()}%` } },
+      ];
+    }
+
+    const projects = await Project.findAll({
+      where: whereClause,
+      attributes: [
+        "id",
+        "name",
+        "description",
+        "location",
+        "status",
+        "progress_percent",
+        "start_date",
+        "end_date",
+        "image_url",
+        "createdAt",
+        "updatedAt",
+      ],
+      limit: parseInt(limit),
+      order: [["name", "ASC"]],
+    });
+
+    res.status(200).json({
+      success: true,
+      data: projects,
+      count: projects.length,
+    });
+  } catch (error) {
+    console.error("Error searching public projects:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error searching projects",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllProjects,
   getProjectById,
@@ -685,4 +983,7 @@ module.exports = {
   deleteProject,
   getProjectStats,
   getProjectsByStatus,
+  getPublicProjects,
+  getPublicProjectById,
+  searchPublicProjects,
 };
