@@ -699,13 +699,7 @@ const getDashboardStats = async (req, res) => {
       recentIssues = await Issue.findAll({
         limit: 5,
         order: [["createdAt", "DESC"]],
-        attributes: [
-          "id",
-          "description",
-          "status",
-          "date_reported",
-          "createdAt",
-        ],
+        attributes: ["id", "description", "status", "createdAt"],
         include: [
           {
             model: Project,
@@ -719,13 +713,7 @@ const getDashboardStats = async (req, res) => {
       recentIssues = await Issue.findAll({
         limit: 5,
         order: [["createdAt", "DESC"]],
-        attributes: [
-          "id",
-          "description",
-          "status",
-          "date_reported",
-          "createdAt",
-        ],
+        attributes: ["id", "description", "status", "createdAt"],
       });
     }
 
